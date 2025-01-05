@@ -8,7 +8,13 @@ chrome.action.onClicked.addListener(async (tab) => {
     console.log("Extension icon clicked. Tab URL:", tab.url);
     
     if (!tab.url.includes("linkedin.com")) {
-        console.error("Not a LinkedIn page");
+        // Show an error notification
+        await chrome.windows.create({
+            url: chrome.runtime.getURL("window/window.html?error=not_linkedin"),
+            type: "popup",
+            width: 400,
+            height: 200
+        });
         return;
     }
 
