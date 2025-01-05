@@ -157,12 +157,12 @@ function updatePostsDisplay(posts) {
 
     if (!postContainer || !postTemplate) return;
 
-    // Create a set of new post IDs
-    const newPostIds = new Set(posts.map(post => post.elementId));
+    // Create a map of new posts by their IDs
+    const newPostsMap = new Map(posts.map(post => [post.elementId, post]));
     
     // Remove posts that are no longer visible
     for (const [postId, element] of currentPosts.entries()) {
-        if (!newPostIds.has(postId)) {
+        if (!newPostsMap.has(postId)) {
             element.classList.add('fade-out');
             setTimeout(() => {
                 if (element.parentNode === postContainer) {
@@ -174,15 +174,15 @@ function updatePostsDisplay(posts) {
     }
 
     // Add or update visible posts
-    posts.forEach((post, index) => {
+    for (const [postId, post] of newPostsMap.entries()) {
         // Skip if post already exists
-        if (currentPosts.has(post.elementId)) {
-            return;
+        if (currentPosts.has(postId)) {
+            continue;
         }
 
         // Create new post element
         const postElement = document.importNode(postTemplate.content, true).firstElementChild;
-        postElement.id = post.elementId;
+        postElement.id = postId;
         
         // Set post content
         postElement.querySelector('.poster-name').textContent = post.posterName;
@@ -194,10 +194,10 @@ function updatePostsDisplay(posts) {
         // Add to container with animation
         postElement.classList.add('fade-in');
         postContainer.appendChild(postElement);
-        currentPosts.set(post.elementId, postElement);
+        currentPosts.set(postId, postElement);
         
         setTimeout(() => postElement.classList.remove('fade-in'), 300);
-    });
+    }
 }
 
 // Theme initialization function

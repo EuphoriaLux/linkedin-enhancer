@@ -8,6 +8,25 @@ if (window.linkedInEnhancerInitialized) {
 
     console.log("Content script loaded and running");
 
+    function setupMessageListeners() {
+        try {
+            chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+                if (chrome.runtime.lastError) {
+                    console.error('Runtime error:', chrome.runtime.lastError);
+                    return;
+                }
+                // Existing message listener code remains unchanged
+            });
+        } catch (error) {
+            console.error('Failed to setup message listeners:', error);
+            if (error.message.includes('Extension context invalidated')) {
+                window.linkedInEnhancerInitialized = false;
+            }
+        }
+    }
+
+    setupMessageListeners();
+
     // Add scroll event listener
     window.addEventListener('scroll', debounce(handleScroll, 250));
 
@@ -33,11 +52,19 @@ if (window.linkedInEnhancerInitialized) {
             if (JSON.stringify(visiblePosts) !== JSON.stringify(lastKnownPosts)) {
                 lastKnownPosts = visiblePosts;
                 
-                chrome.runtime.sendMessage({
-                    action: "updateVisiblePosts",
-                    posts: visiblePosts,
-                    timestamp: new Date().toISOString()
-                });
+                try {
+                    await chrome.runtime.sendMessage({
+                        action: "updateVisiblePosts",
+                        posts: visiblePosts,
+                        timestamp: new Date().toISOString()
+                    });
+                } catch (error) {
+                    if (error.message.includes('Extension context invalidated')) {
+                        window.linkedInEnhancerInitialized = false;
+                        return;
+                    }
+                    console.error('Failed to send message:', error);
+                }
 
                 // Add scroll position tracking and syncing
                 window.addEventListener('scroll', debounce(() => {
@@ -72,6 +99,8 @@ if (window.linkedInEnhancerInitialized) {
 
     function getVisiblePosts() {
         const posts = [];
+        const seenPosts = new Set(); // Track unique posts
+    
         const postElements = document.querySelectorAll([
             'div.feed-shared-update-v2',
             'div.occludable-update',
@@ -89,13 +118,20 @@ if (window.linkedInEnhancerInitialized) {
                 try {
                     const postData = extractPostData(element, index);
                     if (postData.isValid) {
-                        posts.push({
-                            posterName: postData.posterName,
-                            postContent: postData.postContent,
-                            elementId: `post-${index}`,
-                            position: rect.top,
-                            timestamp: new Date().toISOString()
-                        });
+                        // Create a unique identifier based on content and name
+                        const postId = `${postData.posterName}-${postData.postContent.substring(0, 50)}`;
+                    
+                        // Only add if we haven't seen this post before
+                        if (!seenPosts.has(postId)) {
+                            seenPosts.add(postId);
+                            posts.push({
+                                posterName: postData.posterName,
+                                postContent: postData.postContent,
+                                elementId: postId,
+                                position: rect.top,
+                                timestamp: new Date().toISOString()
+                            });
+                        }
                     }
                 } catch (error) {
                     console.error(`Error processing visible post ${index}:`, error);
