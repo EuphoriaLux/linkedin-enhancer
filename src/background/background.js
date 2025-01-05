@@ -52,12 +52,15 @@ chrome.action.onClicked.addListener(async (tab) => {
             });
 
             console.log("Received response from content script:", response);
+
+            // Wait for the window to fully load
+            await new Promise(resolve => setTimeout(resolve, 500));
             
             // Get the tab in the new window
             const windowTabs = await chrome.tabs.query({windowId: newWindow.id});
             if (windowTabs && windowTabs[0]) {
                 const popupTabId = windowTabs[0].id;
-                
+
                 // Send the posts to the popup window
                 await new Promise((resolve, reject) => {
                     chrome.tabs.sendMessage(popupTabId, {
