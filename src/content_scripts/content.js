@@ -187,6 +187,11 @@ function initializeContentScript() {
                     }
                 });
             }
+        } catch (error) {
+            if (error.message.includes('Extension context invalidated')) {
+                handleExtensionInvalidation();
+            }
+            console.error('Scroll handling error:', error);
         } finally {
             isProcessingScroll = false;
         }
@@ -444,4 +449,3 @@ function initializeContentScript() {
 
         return cleanContent;
     }
-}
