@@ -28,7 +28,8 @@
         "assets/images/icon48.png",
         "assets/images/icon128.png",
         "api/api-service.js",
-        "window/window.html"
+        "window/window.html",
+        "window/window.js"
       ],
       "matches": ["https://www.linkedin.com/*"]
     }

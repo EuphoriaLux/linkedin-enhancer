@@ -1,3 +1,5 @@
+// options.js
+
 // Save options to chrome.storage
 function saveOptions() {
     const apiKey = document.getElementById('apiKey').value.trim();
@@ -9,6 +11,10 @@ function saveOptions() {
     const blacklist = document.getElementById('blacklist').value.trim();
     const theme = document.getElementById('theme').value;
     const fontSize = document.getElementById('fontSize').value;
+    const maxPosts = parseInt(document.getElementById('maxPosts').value);
+    const debugMode = document.getElementById('debugMode').checked;
+    const autoExpand = document.getElementById('autoExpand').checked;
+    const customCSS = document.getElementById('customCSS').value.trim();
     const status = document.getElementById('status');
 
     // Validate API key
@@ -28,10 +34,10 @@ function saveOptions() {
         return;
     }
 
-    const maxPosts = parseInt(document.getElementById('maxPosts').value);
-    const debugMode = document.getElementById('debugMode').checked;
-    const autoExpand = document.getElementById('autoExpand').checked;
-    const customCSS = document.getElementById('customCSS').value.trim();
+    if (!defaultPrompt.includes('{content}') || !defaultPrompt.includes('{name}')) {
+        showStatus('Default prompt must include {content} and {name} placeholders.', 'error');
+        return;
+    }
 
     if (isNaN(maxPosts) || maxPosts < 1 || maxPosts > 50) {
         showStatus('Maximum posts must be between 1 and 50.', 'error');

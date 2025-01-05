@@ -1,3 +1,5 @@
+// background.js
+
 console.log("Background script loaded with debug logging");
 
 chrome.runtime.onInstalled.addListener(() => {
@@ -7,6 +9,10 @@ chrome.runtime.onInstalled.addListener(() => {
 // Setup connection handling
 let ports = new Map();
 
+// Track the extension window ID
+let extensionWindowId = null;
+
+// Listen for connections (e.g., ports for scroll-sync)
 chrome.runtime.onConnect.addListener((port) => {
     if (port.name === "scroll-sync") {
         const tabId = port.sender.tab.id;
@@ -14,6 +20,7 @@ chrome.runtime.onConnect.addListener((port) => {
         
         port.onDisconnect.addListener(() => {
             ports.delete(tabId);
+            console.log(`Port disconnected for tab ${tabId}`);
         });
         
         port.onMessage.addListener((message) => {
@@ -33,23 +40,48 @@ chrome.runtime.onConnect.addListener((port) => {
     }
 });
 
+// Listen for messages from content scripts or other parts of the extension
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "updateVisiblePosts") {
         // Forward the message to the extension window
-        chrome.tabs.query({ url: chrome.runtime.getURL("window/window.html") }, (tabs) => {
-            tabs.forEach(tab => {
-                chrome.tabs.sendMessage(tab.id, {
-                    action: "updateVisiblePosts",
-                    posts: request.posts,
-                    timestamp: request.timestamp
-                });
+        if (extensionWindowId) {
+            chrome.tabs.sendMessage(extensionWindowId, {
+                action: "updateVisiblePosts",
+                posts: request.posts,
+                timestamp: request.timestamp
+            }, (response) => {
+                if (chrome.runtime.lastError) {
+                    console.error("Failed to send message to extension window:", chrome.runtime.lastError.message);
+                } else {
+                    console.log("Message forwarded to extension window successfully.");
+                }
             });
-        });
+        } else {
+            console.warn("Extension window is not open. Cannot forward 'updateVisiblePosts' message.");
+        }
         sendResponse({ status: "success" });
+    } else if (request.action === "registerWindow") {
+        // Register the extension window's tab ID
+        const tabId = sender.tab.id;
+        if (extensionWindowId && extensionWindowId !== tabId) {
+            console.warn(`Another extension window is already registered (Tab ID: ${extensionWindowId}). Overwriting with new Tab ID: ${tabId}`);
+        }
+        extensionWindowId = tabId;
+        console.log(`Registered extension window with Tab ID: ${extensionWindowId}`);
+        sendResponse({ status: "registered" });
     }
-    return false;
+    return true;
 });
 
+// Listen for the extension window tab closing
+chrome.tabs.onRemoved.addListener((tabId, removeInfo) => {
+    if (tabId === extensionWindowId) {
+        console.log("Extension window tab closed.");
+        extensionWindowId = null;
+    }
+});
+
+// Handle extension icon clicks
 chrome.action.onClicked.addListener(async (tab) => {
     console.log("Extension icon clicked:", {
         tabId: tab.id,
@@ -77,6 +109,29 @@ chrome.action.onClicked.addListener(async (tab) => {
     }
 
     try {
+        // Define windowUrl
+        const windowUrl = chrome.runtime.getURL("window/window.html");
+
+        // Check if the extension window is already open
+        const existingWindows = await chrome.windows.getAll({ populate: true });
+        const extensionWindow = existingWindows.find(win => 
+            win.type === "popup" && 
+            win.tabs.some(tab => tab.url.startsWith(windowUrl))
+        );
+
+        if (extensionWindow) {
+            // Focus the existing window instead of creating a new one
+            console.log("Extension window already open, focusing it...");
+            await chrome.windows.update(extensionWindow.id, { focused: true });
+            // Update extensionWindowId
+            const extensionTab = extensionWindow.tabs.find(tab => tab.url.startsWith(windowUrl));
+            if (extensionTab) {
+                extensionWindowId = extensionTab.id;
+                console.log("Extension window tab ID updated to:", extensionWindowId);
+            }
+            return;
+        }
+
         console.log("Current tab is a LinkedIn page, proceeding with window creation...");
         const originalTabId = tab.id;
         
@@ -99,7 +154,6 @@ chrome.action.onClicked.addListener(async (tab) => {
 
         // Create extension window (right side)
         const extensionWidth = Math.floor(screenWidth * 0.4);
-        const windowUrl = chrome.runtime.getURL("window/window.html");
         
         const newWindow = await chrome.windows.create({
             url: windowUrl,
@@ -125,88 +179,24 @@ chrome.action.onClicked.addListener(async (tab) => {
         }
 
         console.log("Window created successfully:", newWindow);
+        // Do not immediately search for the extension tab; rely on the "registerWindow" message
+        // Instead, set up the `chrome.tabs.onUpdated` listener to catch the tab once it's loaded
+        const listener = (tabId, changeInfo, tab) => {
+            if (changeInfo.status === 'complete' && tab.url.startsWith(windowUrl)) {
+                extensionWindowId = tabId;
+                console.log("Extension window tab ID set to:", extensionWindowId);
+                chrome.tabs.onUpdated.removeListener(listener);
 
-        console.log("Attempting to inject content script...");
-        try {
-            console.log("Injecting content script...");
-            await chrome.scripting.executeScript({
-                target: { tabId: originalTabId },
-                files: ['content_scripts/content.js']
-            }).catch(error => {console.error("Error injecting content script:", error);});
-
-            if (chrome.runtime.lastError) {
-                console.error("Error injecting content script:", chrome.runtime.lastError);
-                return;
+                // Now, proceed to inject the content script and send messages
+                injectContentScriptAndSendPosts(originalTabId);
             }
-            if (chrome.runtime.lastError) {
-                console.error("Content script injection error:", chrome.runtime.lastError);
-                throw new Error(`Failed to inject content script: ${chrome.runtime.lastError.message}`);
-            }
-            
-            console.log("Content script injected successfully");
-        } catch (error) {
-            console.error("Content script injection failed:", error);
-            throw error;
-        }
+        };
 
-        // Add delay with logging
-        console.log("Starting delay before message send...");
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        console.log("Delay completed, sending message to content script...");
+        chrome.tabs.onUpdated.addListener(listener);
 
-        try {
-            console.log("Sending message to content script...");
-            const response = await new Promise((resolve, reject) => {
-                chrome.tabs.sendMessage(originalTabId, {
-                    action: "getPostContent",
-                    timestamp: new Date().toISOString(),
-                }, response => {
-                    if (chrome.runtime.lastError) {
-                        console.error("Message send error:", chrome.runtime.lastError);
-                        reject(chrome.runtime.lastError);
-                    } else {
-                        console.log("Message sent successfully, received response:", response);
-                        resolve(response);
-                    }
-                });
-            });
-
-            console.log("Querying for window tabs...");
-            const windowTabs = await chrome.tabs.query({ windowId: newWindow.id });
-            
-            if (windowTabs && windowTabs[0]) {
-                const windowTabId = windowTabs[0].id;
-                console.log("Found window tab:", windowTabId);
-
-                // Send the posts to the new window
-                console.log("Sending posts to window...");
-                await chrome.tabs.sendMessage(windowTabId, {
-                    action: "setPostContent",
-                    postContent: response?.posts || [],
-                    debug: {
-                        ...response?.debug || {},
-                        messageTimestamp: new Date().toISOString(),
-                    }
-                }).catch(error => {
-                    console.error("Failed to send posts to window:", error);
-                    throw error;
-                });
-                
-                console.log("Posts sent to window successfully");
-            } else {
-                console.error("Could not find tab in new window:", {
-                    windowId: newWindow.id,
-                    tabs: windowTabs
-                });
-                throw new Error("Window tab not found");
-            }
-        } catch (error) {
-            console.error("Error in message handling:", {
-                error,
-                stack: error.stack,
-                timestamp: new Date().toISOString()
-            });
-            throw error;
+        // Inject content script and send posts (if window is already registered)
+        if (extensionWindowId) {
+            injectContentScriptAndSendPosts(originalTabId);
         }
 
     } catch (error) {
@@ -218,3 +208,75 @@ chrome.action.onClicked.addListener(async (tab) => {
         console.error("Error in click handler:", error);
     }
 });
+
+// Function to inject content script and send posts
+async function injectContentScriptAndSendPosts(originalTabId) {
+    console.log("Attempting to inject content script...");
+    try {
+        console.log("Injecting content script...");
+        await chrome.scripting.executeScript({
+            target: { tabId: originalTabId },
+            files: ['content_scripts/content.js']
+        }).catch(error => {console.error("Error injecting content script:", error);});
+
+        if (chrome.runtime.lastError) {
+            console.error("Error injecting content script:", chrome.runtime.lastError);
+            return;
+        }
+        
+        console.log("Content script injected successfully");
+    } catch (error) {
+        console.error("Content script injection failed:", error);
+        throw error;
+    }
+
+    // Add delay with logging
+    console.log("Starting delay before message send...");
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    console.log("Delay completed, sending message to content script...");
+
+    try {
+        console.log("Sending message to content script...");
+        const response = await new Promise((resolve, reject) => {
+            chrome.tabs.sendMessage(originalTabId, {
+                action: "getPostContent",
+                timestamp: new Date().toISOString(),
+            }, response => {
+                if (chrome.runtime.lastError) {
+                    console.error("Message send error:", chrome.runtime.lastError.message);
+                    reject(chrome.runtime.lastError);
+                } else {
+                    console.log("Message sent successfully, received response:", response);
+                    resolve(response);
+                }
+            });
+        });
+
+        if (extensionWindowId) {
+            console.log("Sending posts to extension window...");
+            await chrome.tabs.sendMessage(extensionWindowId, {
+                action: "updateVisiblePosts", // Ensure this matches the listener in window.js
+                posts: response?.posts || [],
+                timestamp: new Date().toISOString(),
+                debug: {
+                    ...response?.debug || {},
+                    messageTimestamp: new Date().toISOString(),
+                }
+            }).catch(error => {
+                console.error("Failed to send posts to window:", error);
+                throw error;
+            });
+            
+            console.log("Posts sent to window successfully");
+        } else {
+            console.error("Extension window ID is not set. Cannot send posts.");
+        }
+    } catch (error) {
+        console.error("Error in message handling:", {
+            error,
+            stack: error.stack,
+            timestamp: new Date().toISOString()
+        });
+        throw error;
+    }
+}

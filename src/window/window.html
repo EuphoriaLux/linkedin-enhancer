@@ -1,42 +1,33 @@
+<!-- window.html -->
 <!DOCTYPE html>
 <html>
 <head>
-    <title>LinkedIn Post</title>
+    <title>LinkedIn Enhancer</title>
     <link rel="stylesheet" href="../assets/styles/styles.css">
 </head>
+</head>
 <body>
-    <h1>LinkedIn Posts</h1>
-    <div class="window-controls">
-        <button id="togglePin" class="window-control-btn" title="Pin Window">📌</button>
-        <button id="toggleSize" class="window-control-btn" title="Toggle Size">⛶</button>
-    </div>
-    <div id="error-container" class="error-message"></div>
-    <div id="debug-info" style="background: #f0f0f0; padding: 10px; margin: 10px 0; font-family: monospace; font-size: 12px;">
-        <div>Debug Information:</div>
-        <div id="message-count">Messages received: 0</div>
-        <div id="last-message"></div>
-    </div>
-    <div id="status-message" style="color: red;"></div>
-    <div id="loading-indicator" style="display: block;">Loading posts...</div>
-    <div id="post-container"></div>
+    <h1>LinkedIn Enhancer</h1>
+    <div id="post-container" class="post-container"></div>
+
     <template id="post-template">
-        <div class="post-card">
-            <div class="post-header">
-                <h3 class="poster-name"></h3>
-            </div>
+        <div class="post">
+            <div class="poster-name"></div>
             <div class="post-content"></div>
-            <div class="post-actions">
+            <div class="buttons">
                 <button class="generate-comment-btn">Generate Comment</button>
-                <div class="generated-comment hidden">
-                    <h4>Generated Comment:</h4>
-                    <div class="comment-content"></div>
-                    <div class="prompt-display hidden"><h4>Prompt:</h4><pre class="prompt-text"></pre></div>
-                    <button class="copy-comment-btn">Copy</button>
-                </div>
+                <button class="copy-comment-btn hidden">Copy</button>
+            </div>
+            <div class="generated-comment hidden">
+                <strong>Generated Comment:</strong>
+                <p class="comment-content"></p>
             </div>
         </div>
     </template>
-    <script src="../api/api-service.js"></script>
+
+    <div id="status" class="status hidden"></div>
+
+    <!-- Reference to external script -->
     <script src="window.js"></script>
 </body>
 </html>
