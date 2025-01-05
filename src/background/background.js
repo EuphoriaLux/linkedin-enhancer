@@ -12,6 +12,7 @@ chrome.action.onClicked.addListener(async (tab) => {
     });
     
     if (!tab.url.includes("linkedin.com")) {
+        console.log("Not a LinkedIn page, skipping window creation");
         console.log("Not a LinkedIn page, showing error popup");
         try {
             const errorWindow = await chrome.windows.create({
@@ -28,6 +29,7 @@ chrome.action.onClicked.addListener(async (tab) => {
     }
 
     try {
+        console.log("About to create new window...");
         const originalTabId = tab.id;
         console.log("Creating main window...");
 
@@ -44,9 +46,13 @@ chrome.action.onClicked.addListener(async (tab) => {
             console.error("Window creation failed:", error);
             throw error;
         });
-
+        
         if (chrome.runtime.lastError) {
-            console.error("Chrome runtime error:", chrome.runtime.lastError);
+            console.error("Error creating window:", chrome.runtime.lastError);
+            return;
+        }
+
+        if (!newWindow) {
             return;
         }
 
@@ -54,11 +60,16 @@ chrome.action.onClicked.addListener(async (tab) => {
 
         console.log("Attempting to inject content script...");
         try {
+            console.log("Injecting content script...");
             await chrome.scripting.executeScript({
                 target: { tabId: originalTabId },
                 files: ['content_scripts/content.js']
             });
-            
+
+            if (chrome.runtime.lastError) {
+                console.error("Error injecting content script:", chrome.runtime.lastError);
+                return;
+            }
             if (chrome.runtime.lastError) {
                 console.error("Content script injection error:", chrome.runtime.lastError);
                 throw new Error(`Failed to inject content script: ${chrome.runtime.lastError.message}`);
