@@ -50,32 +50,35 @@ chrome.action.onClicked.addListener(async (tab) => {
     try {
         console.log("Current tab is a LinkedIn page, proceeding with window creation...");
         const originalTabId = tab.id;
-        console.log("Creating main window...");
-
-        // Create the window first with full URL
-        const windowUrl = chrome.runtime.getURL("window/window.html");
-        console.log("Setting focus to true for new window");
-        console.log("Window URL:", windowUrl);
-
-        // Get display information using chrome.system.display API
+        
+        // Get display information
         const displays = await chrome.system.display.getInfo();
         const primaryDisplay = displays.find(d => d.isPrimary) || displays[0];
         
-        // Calculate window dimensions based on primary display
+        // Calculate dimensions
         const screenWidth = primaryDisplay.workArea.width;
         const screenHeight = primaryDisplay.workArea.height;
-        const windowWidth = Math.floor(screenWidth * 0.4);
-        const windowHeight = Math.floor(screenHeight * 0.8);
-        const left = screenWidth - windowWidth - 20;
-        const top = Math.floor((screenHeight - windowHeight) / 2);
+        
+        // Update LinkedIn window (left side)
+        await chrome.windows.update(tab.windowId, {
+            state: 'normal',
+            left: 0,
+            top: 0,
+            width: Math.floor(screenWidth * 0.6),
+            height: screenHeight
+        });
 
+        // Create extension window (right side)
+        const extensionWidth = Math.floor(screenWidth * 0.4);
+        const windowUrl = chrome.runtime.getURL("window/window.html");
+        
         const newWindow = await chrome.windows.create({
             url: windowUrl,
             type: "popup",
-            width: windowWidth,
-            height: windowHeight,
-            left: left,
-            top: top,
+            width: extensionWidth,
+            height: screenHeight,
+            left: Math.floor(screenWidth * 0.6),
+            top: 0,
             focused: true
         }).catch(error => {
             console.error("Window creation failed:", error);

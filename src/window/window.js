@@ -79,6 +79,66 @@ function setupWindowControls() {
 
 let currentPosts = new Map();
 
+function setupPostEventListeners(postElement, post) {
+    const generateBtn = postElement.querySelector('.generate-comment-btn');
+    const generatedComment = postElement.querySelector('.generated-comment');
+    const promptDisplay = postElement.querySelector('.prompt-display');
+    const commentContent = postElement.querySelector('.comment-content');
+    const copyBtn = postElement.querySelector('.copy-comment-btn');
+    const promptTextElement = postElement.querySelector('.prompt-text');
+    
+    if (generateBtn) {
+        generateBtn.addEventListener('click', async () => {
+            try {
+                generateBtn.disabled = true;
+                generateBtn.textContent = 'Generating...';
+                
+                const settings = await chrome.storage.sync.get(['defaultPrompt']);
+                const prompt = settings.defaultPrompt
+                    ? settings.defaultPrompt
+                        .replace('{content}', post.postContent)
+                        .replace('{name}', post.posterName)
+                    : `Generate a professional comment for LinkedIn post by ${post.posterName}: "${post.postContent}"`;
+
+                generatedComment.classList.remove('hidden');
+                promptDisplay.classList.remove('hidden');
+                commentContent.textContent = 'Generating comment...';
+                
+                const generatedText = await APIService.generateComment(
+                    post.postContent,
+                    post.posterName
+                );
+                
+                promptTextElement.textContent = prompt;
+                commentContent.textContent = generatedText;
+            } catch (error) {
+                showError(error.message);
+                commentContent.textContent = `Error: ${error.message}`;
+            } finally {
+                generateBtn.disabled = false;
+                generateBtn.textContent = 'Generate Comment';
+            }
+        });
+    }
+    
+    if (copyBtn) {
+        copyBtn.addEventListener('click', async () => {
+            if (commentContent.textContent) {
+                try {
+                    await navigator.clipboard.writeText(commentContent.textContent);
+                    copyBtn.textContent = 'Copied!';
+                    setTimeout(() => {
+                        copyBtn.textContent = 'Copy';
+                    }, 2000);
+                } catch (err) {
+                    showError('Failed to copy to clipboard');
+                    console.error('Failed to copy:', err);
+                }
+            }
+        });
+    }
+}
+
 function updatePostsDisplay(posts) {
     const postContainer = document.getElementById('post-container');
     const postTemplate = document.getElementById('post-template');
