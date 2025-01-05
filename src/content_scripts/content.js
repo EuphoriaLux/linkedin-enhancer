@@ -186,7 +186,6 @@ function initializeContentScript() {
                         }, 100);
                     }
                 });
-            }
         } catch (error) {
             if (error.message.includes('Extension context invalidated')) {
                 handleExtensionInvalidation();
