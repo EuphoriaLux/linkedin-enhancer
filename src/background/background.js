@@ -57,16 +57,17 @@ chrome.action.onClicked.addListener(async (tab) => {
         console.log("Setting focus to true for new window");
         console.log("Window URL:", windowUrl);
 
-        const screenWidth = window.screen.availWidth;
-        const screenHeight = window.screen.availHeight;
-
-        // Calculate optimal window size (40% of screen width, 80% of screen height)
+        // Get display information using chrome.system.display API
+        const displays = await chrome.system.display.getInfo();
+        const primaryDisplay = displays.find(d => d.isPrimary) || displays[0];
+        
+        // Calculate window dimensions based on primary display
+        const screenWidth = primaryDisplay.workArea.width;
+        const screenHeight = primaryDisplay.workArea.height;
         const windowWidth = Math.floor(screenWidth * 0.4);
         const windowHeight = Math.floor(screenHeight * 0.8);
-
-        // Calculate position (right side of screen)
-        const left = screenWidth - windowWidth - 20; // 20px padding from right edge
-        const top = Math.floor((screenHeight - windowHeight) / 2); // Centered vertically
+        const left = screenWidth - windowWidth - 20;
+        const top = Math.floor((screenHeight - windowHeight) / 2);
 
         const newWindow = await chrome.windows.create({
             url: windowUrl,
