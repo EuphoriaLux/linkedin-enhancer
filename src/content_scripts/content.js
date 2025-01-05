@@ -186,14 +186,14 @@ function initializeContentScript() {
                         }, 100);
                     }
                 });
-        } catch (error) {
-            if (error.message.includes('Extension context invalidated')) {
-                handleExtensionInvalidation();
-            }
-            console.error('Scroll handling error:', error);
-        } finally {
-            isProcessingScroll = false;
-        }
+                } catch (error) {
+                    if (error.message.includes('Extension context invalidated')) {
+                        handleExtensionInvalidation();
+                    }
+                    console.error('Scroll handling error:', error);
+                } finally {
+                    isProcessingScroll = false;
+                }
     }
 
     function getVisiblePosts() {
