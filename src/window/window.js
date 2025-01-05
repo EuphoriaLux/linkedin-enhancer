@@ -1,5 +1,82 @@
 console.log("Window script loaded");
 
+let windowState = {
+    isMaximized: false,
+    defaultWidth: 0,
+    defaultHeight: 0,
+    defaultLeft: 0,
+    defaultTop: 0
+};
+
+function initializeWindowState() {
+    chrome.windows.getCurrent((window) => {
+        windowState.defaultWidth = window.width;
+        windowState.defaultHeight = window.height;
+        windowState.defaultLeft = window.left;
+        windowState.defaultTop = window.top;
+    });
+}
+
+function setupWindowResizeHandler() {
+    let resizeTimeout;
+    window.addEventListener('resize', () => {
+        clearTimeout(resizeTimeout);
+        resizeTimeout = setTimeout(() => {
+            chrome.storage.local.set({
+                windowSize: {
+                    width: window.outerWidth,
+                    height: window.outerHeight,
+                    left: window.screenX,
+                    top: window.screenY
+                }
+            });
+        }, 500);
+    });
+}
+
+function setupWindowControls() {
+    const togglePinBtn = document.getElementById('togglePin');
+    const toggleSizeBtn = document.getElementById('toggleSize');
+
+    if (togglePinBtn) {
+        togglePinBtn.addEventListener('click', () => {
+            chrome.windows.getCurrent((window) => {
+                const isPinned = togglePinBtn.classList.toggle('active');
+                chrome.windows.update(window.id, {
+                    focused: true,
+                    state: 'normal',
+                    alwaysOnTop: isPinned
+                });
+                chrome.storage.local.set({ windowPinned: isPinned });
+            });
+        });
+    }
+
+    if (toggleSizeBtn) {
+        toggleSizeBtn.addEventListener('click', () => {
+            chrome.windows.getCurrent((window) => {
+                if (windowState.isMaximized) {
+                    // Restore to previous size
+                    chrome.windows.update(window.id, {
+                        state: 'normal',
+                        width: windowState.defaultWidth,
+                        height: windowState.defaultHeight,
+                        left: windowState.defaultLeft,
+                        top: windowState.defaultTop
+                    });
+                } else {
+                    // Maximize
+                    chrome.windows.update(window.id, {
+                        state: 'maximized'
+                    });
+                }
+                windowState.isMaximized = !windowState.isMaximized;
+                toggleSizeBtn.classList.toggle('active');
+            });
+        });
+    }
+}
+
 let currentPosts = new Map();
 
 function updatePostsDisplay(posts) {
@@ -94,6 +171,33 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log("Window DOM loaded");
     initializeTheme();
     setLoading(true);
+    initializeWindowState();
+    setupWindowResizeHandler();
+    setupWindowControls();
+    
+    // Restore last window size and position
+    chrome.storage.local.get('windowSize', (data) => {
+        if (data.windowSize) {
+            chrome.windows.getCurrent((window) => {
+                chrome.windows.update(window.id, {
+                    width: data.windowSize.width,
+                    height: data.windowSize.height,
+                    left: data.windowSize.left,
+                    top: data.windowSize.top
+                });
+            });
+        }
+    });
+
+    // Restore window pin state
+    chrome.storage.local.get('windowPinned', (data) => {
+        if (data.windowPinned) {
+            const togglePinBtn = document.getElementById('togglePin');
+            if (togglePinBtn) {
+                togglePinBtn.click();
+            }
+        }
+    });
 });
 
 // Listen for theme changes

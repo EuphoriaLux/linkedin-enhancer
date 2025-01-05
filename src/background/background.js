@@ -57,11 +57,24 @@ chrome.action.onClicked.addListener(async (tab) => {
         console.log("Setting focus to true for new window");
         console.log("Window URL:", windowUrl);
 
+        const screenWidth = window.screen.availWidth;
+        const screenHeight = window.screen.availHeight;
+
+        // Calculate optimal window size (40% of screen width, 80% of screen height)
+        const windowWidth = Math.floor(screenWidth * 0.4);
+        const windowHeight = Math.floor(screenHeight * 0.8);
+
+        // Calculate position (right side of screen)
+        const left = screenWidth - windowWidth - 20; // 20px padding from right edge
+        const top = Math.floor((screenHeight - windowHeight) / 2); // Centered vertically
+
         const newWindow = await chrome.windows.create({
             url: windowUrl,
             type: "popup",
-            width: 1000,
-            height: 800,
+            width: windowWidth,
+            height: windowHeight,
+            left: left,
+            top: top,
             focused: true
         }).catch(error => {
             console.error("Window creation failed:", error);

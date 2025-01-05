@@ -274,3 +274,47 @@ h1 {
     opacity: 0;
     transform: translateY(-10px);
 }
+
+.window-controls {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    display: flex;
+    gap: 8px;
+    z-index: 1000;
+}
+
+.window-control-btn {
+    background: transparent;
+    border: none;
+    cursor: pointer;
+    padding: 4px 8px;
+    font-size: 16px;
+    border-radius: var(--radius-sm);
+    transition: background-color 0.2s ease;
+}
+
+.window-control-btn:hover {
+    background-color: var(--linkedin-bg);
+}
+
+.window-control-btn.active {
+    color: var(--linkedin-blue);
+}
+
+.window-pinned {
+    position: fixed !important;
+    z-index: 10000;
+}
+
+@media (max-width: 768px) {
+    .window-controls {
+        top: 5px;
+        right: 5px;
+    }
+    
+    .window-control-btn {
+        padding: 2px 4px;
+        font-size: 14px;
+    }
+}
