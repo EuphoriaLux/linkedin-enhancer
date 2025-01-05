@@ -1,5 +1,17 @@
 console.log("Window script loaded");
 
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
 let windowState = {
     isMaximized: false,
     defaultWidth: 0,
@@ -163,25 +175,28 @@ function updatePostsDisplay(posts) {
 
     // Add or update visible posts
     posts.forEach((post, index) => {
-        if (!currentPosts.has(post.elementId)) {
-            // Create new post element
-            const postElement = document.importNode(postTemplate.content, true).firstElementChild;
-            postElement.id = post.elementId;
-            
-            // Set post content
-            postElement.querySelector('.poster-name').textContent = post.posterName;
-            postElement.querySelector('.post-content').textContent = post.postContent;
-            
-            // Add event listeners for buttons
-            setupPostEventListeners(postElement, post);
-            
-            // Add to container with animation
-            postElement.classList.add('fade-in');
-            postContainer.appendChild(postElement);
-            currentPosts.set(post.elementId, postElement);
-            
-            setTimeout(() => postElement.classList.remove('fade-in'), 300);
+        // Skip if post already exists
+        if (currentPosts.has(post.elementId)) {
+            return;
         }
+
+        // Create new post element
+        const postElement = document.importNode(postTemplate.content, true).firstElementChild;
+        postElement.id = post.elementId;
+        
+        // Set post content
+        postElement.querySelector('.poster-name').textContent = post.posterName;
+        postElement.querySelector('.post-content').textContent = post.postContent;
+        
+        // Add event listeners for buttons
+        setupPostEventListeners(postElement, post);
+        
+        // Add to container with animation
+        postElement.classList.add('fade-in');
+        postContainer.appendChild(postElement);
+        currentPosts.set(post.elementId, postElement);
+        
+        setTimeout(() => postElement.classList.remove('fade-in'), 300);
     });
 }
 
@@ -276,22 +291,39 @@ const debugInfo = {
 
 let messageCount = 0;
 
-chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-    if (request.action === "updateVisiblePosts") {
-        updatePostsDisplay(request.posts);
-        sendResponse({ status: "success" });
-    }
-        console.log("Window received message:", request);
-        
-        messageCount++;
-        if (debugInfo.messageCount) {
-            debugInfo.messageCount.textContent = `Messages received: ${messageCount}`;
-        }
-        if (debugInfo.lastMessage) {
-            debugInfo.lastMessage.textContent = `Last message: ${JSON.stringify(request)}`;
-        }
+let lastUpdateTimestamp = 0;
+const UPDATE_THRESHOLD = 1000; // 1 second threshold
 
-        if (request.action === "setPostContent") {
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    console.log("Window received message:", request);
+    
+    // Update debug info
+    messageCount++;
+    if (debugInfo.messageCount) {
+        debugInfo.messageCount.textContent = `Messages received: ${messageCount}`;
+    }
+    if (debugInfo.lastMessage) {
+        debugInfo.lastMessage.textContent = `Last message: ${JSON.stringify(request)}`;
+    }
+
+    // Handle visible posts updates
+    if (request.action === "updateVisiblePosts") {
+        const currentTime = Date.now();
+        if (currentTime - lastUpdateTimestamp > UPDATE_THRESHOLD) {
+            lastUpdateTimestamp = currentTime;
+            updatePostsDisplay(request.posts);
+            sendResponse({ status: "success" });
+        } else {
+            console.log("Skipping update due to throttling");
+            sendResponse({ status: "throttled" });
+        }
+    }
+
+    // Handle post content setting
+    if (request.action === "setPostContent") {
+        const currentTime = Date.now();
+        if (currentTime - lastUpdateTimestamp > UPDATE_THRESHOLD) {
+            lastUpdateTimestamp = currentTime;
             setLoading(false);
 
             if (request.debug) {
@@ -313,10 +345,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
                 showError(`Error displaying posts: ${error.message}`);
                 sendResponse({ status: "error", message: error.message });
             }
+        } else {
+            console.log("Skipping content update due to throttling");
+            sendResponse({ status: "throttled" });
         }
-
-        return false;
     }
+
+    return false;
+}
 );
 
 async function displayPosts(posts) {
