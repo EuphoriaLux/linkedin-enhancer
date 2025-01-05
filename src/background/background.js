@@ -4,6 +4,23 @@ chrome.runtime.onInstalled.addListener(() => {
     console.log("Service worker installed successfully");
 });
 
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === "updateVisiblePosts") {
+        // Forward the message to the extension window
+        chrome.tabs.query({ url: chrome.runtime.getURL("window/window.html") }, (tabs) => {
+            tabs.forEach(tab => {
+                chrome.tabs.sendMessage(tab.id, {
+                    action: "updateVisiblePosts",
+                    posts: request.posts,
+                    timestamp: request.timestamp
+                });
+            });
+        });
+        sendResponse({ status: "success" });
+    }
+    return false;
+});
+
 chrome.action.onClicked.addListener(async (tab) => {
     console.log("Extension icon clicked:", {
         tabId: tab.id,

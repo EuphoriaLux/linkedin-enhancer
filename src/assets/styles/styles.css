@@ -217,6 +217,42 @@ h1 {
     display: none;
 }
 
+.post-card {
+    transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.fade-in {
+    opacity: 0;
+    transform: translateY(20px);
+    animation: fadeIn 0.3s ease forwards;
+}
+
+.fade-out {
+    opacity: 1;
+    transform: translateY(0);
+    animation: fadeOut 0.3s ease forwards;
+}
+
+@keyframes fadeIn {
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes fadeOut {
+    to {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+}
+
+#post-container {
+    max-height: calc(100vh - 100px);
+    overflow-y: auto;
+    scroll-behavior: smooth;
+}
+
 @keyframes spin {
     to { transform: rotate(360deg); }
 }

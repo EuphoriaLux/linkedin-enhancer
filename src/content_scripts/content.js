@@ -2,8 +2,82 @@ if (window.linkedInEnhancerInitialized) {
     console.log("LinkedIn Enhancer already initialized, skipping...");
 } else {
     window.linkedInEnhancerInitialized = true;
+    let lastKnownPosts = [];
+    let isProcessingScroll = false;
 
     console.log("Content script loaded and running");
+
+    // Add scroll event listener
+    window.addEventListener('scroll', debounce(handleScroll, 250));
+
+    function debounce(func, wait) {
+        let timeout;
+        return function executedFunction(...args) {
+            const later = () => {
+                clearTimeout(timeout);
+                func(...args);
+            };
+            clearTimeout(timeout);
+            timeout = setTimeout(later, wait);
+        };
+    }
+
+    async function handleScroll() {
+        if (isProcessingScroll) return;
+        
+        try {
+            isProcessingScroll = true;
+            const visiblePosts = getVisiblePosts();
+            
+            if (JSON.stringify(visiblePosts) !== JSON.stringify(lastKnownPosts)) {
+                lastKnownPosts = visiblePosts;
+                
+                chrome.runtime.sendMessage({
+                    action: "updateVisiblePosts",
+                    posts: visiblePosts,
+                    timestamp: new Date().toISOString()
+                });
+            }
+        } finally {
+            isProcessingScroll = false;
+        }
+    }
+
+    function getVisiblePosts() {
+        const posts = [];
+        const postElements = document.querySelectorAll([
+            'div.feed-shared-update-v2',
+            'div.occludable-update',
+            'div[data-urn]'
+        ].join(', '));
+
+        postElements.forEach((element, index) => {
+            const rect = element.getBoundingClientRect();
+            const isVisible = (
+                rect.top >= 0 &&
+                rect.top <= (window.innerHeight || document.documentElement.clientHeight)
+            );
+
+            if (isVisible) {
+                try {
+                    const postData = extractPostData(element, index);
+                    if (postData.isValid) {
+                        posts.push({
+                            posterName: postData.posterName,
+                            postContent: postData.postContent,
+                            elementId: `post-${index}`,
+                            position: rect.top,
+                            timestamp: new Date().toISOString()
+                        });
+                    }
+                } catch (error) {
+                    console.error(`Error processing visible post ${index}:`, error);
+                }
+            }
+        });
+
+        return posts;
+    }
 
     // Debug configuration
     const DEBUG = {

@@ -1,5 +1,53 @@
 console.log("Window script loaded");
 
+let currentPosts = new Map();
+
+function updatePostsDisplay(posts) {
+    const postContainer = document.getElementById('post-container');
+    const postTemplate = document.getElementById('post-template');
+
+    if (!postContainer || !postTemplate) return;
+
+    // Create a set of new post IDs
+    const newPostIds = new Set(posts.map(post => post.elementId));
+    
+    // Remove posts that are no longer visible
+    for (const [postId, element] of currentPosts.entries()) {
+        if (!newPostIds.has(postId)) {
+            element.classList.add('fade-out');
+            setTimeout(() => {
+                if (element.parentNode === postContainer) {
+                    postContainer.removeChild(element);
+                }
+                currentPosts.delete(postId);
+            }, 300);
+        }
+    }
+
+    // Add or update visible posts
+    posts.forEach((post, index) => {
+        if (!currentPosts.has(post.elementId)) {
+            // Create new post element
+            const postElement = document.importNode(postTemplate.content, true).firstElementChild;
+            postElement.id = post.elementId;
+            
+            // Set post content
+            postElement.querySelector('.poster-name').textContent = post.posterName;
+            postElement.querySelector('.post-content').textContent = post.postContent;
+            
+            // Add event listeners for buttons
+            setupPostEventListeners(postElement, post);
+            
+            // Add to container with animation
+            postElement.classList.add('fade-in');
+            postContainer.appendChild(postElement);
+            currentPosts.set(post.elementId, postElement);
+            
+            setTimeout(() => postElement.classList.remove('fade-in'), 300);
+        }
+    });
+}
+
 // Theme initialization function
 function initializeTheme() {
     chrome.storage.sync.get('theme', function(data) {
@@ -63,8 +111,11 @@ const debugInfo = {
 
 let messageCount = 0;
 
-chrome.runtime.onMessage.addListener(
-    function(request, sender, sendResponse) {
+chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    if (request.action === "updateVisiblePosts") {
+        updatePostsDisplay(request.posts);
+        sendResponse({ status: "success" });
+    }
         console.log("Window received message:", request);
         
         messageCount++;
