@@ -233,31 +233,6 @@ function initializeContentScript() {
         }
     }, 250);
 
-                // Add scroll position tracking and syncing
-                window.addEventListener('scroll', debounce(() => {
-                    if (!isScrolling) {
-                        const scrollPosition = window.scrollY;
-                        chrome.runtime.sendMessage({
-                            action: "syncScroll",
-                            position: scrollPosition,
-                            source: "linkedin"
-                        });
-                    }
-                }, 50));
-
-                // Listen for scroll sync messages from extension window
-                chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-                    if (request.action === "syncScroll" && request.source === "extension") {
-                        isScrolling = true;
-                        window.scrollTo({
-                            top: request.position,
-                            behavior: 'smooth'
-                        });
-                        setTimeout(() => {
-                            isScrolling = false;
-                        }, 100);
-                    }
-                });
                 } catch (error) {
                     if (error.message.includes('Extension context invalidated')) {
                         handleExtensionInvalidation();
