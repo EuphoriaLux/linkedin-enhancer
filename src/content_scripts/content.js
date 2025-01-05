@@ -4,6 +4,7 @@ if (window.linkedInEnhancerInitialized) {
     window.linkedInEnhancerInitialized = true;
     let lastKnownPosts = [];
     let isProcessingScroll = false;
+    let isScrolling = false;
 
     console.log("Content script loaded and running");
 
@@ -36,6 +37,32 @@ if (window.linkedInEnhancerInitialized) {
                     action: "updateVisiblePosts",
                     posts: visiblePosts,
                     timestamp: new Date().toISOString()
+                });
+
+                // Add scroll position tracking and syncing
+                window.addEventListener('scroll', debounce(() => {
+                    if (!isScrolling) {
+                        const scrollPosition = window.scrollY;
+                        chrome.runtime.sendMessage({
+                            action: "syncScroll",
+                            position: scrollPosition,
+                            source: "linkedin"
+                        });
+                    }
+                }, 50));
+
+                // Listen for scroll sync messages from extension window
+                chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+                    if (request.action === "syncScroll" && request.source === "extension") {
+                        isScrolling = true;
+                        window.scrollTo({
+                            top: request.position,
+                            behavior: 'smooth'
+                        });
+                        setTimeout(() => {
+                            isScrolling = false;
+                        }, 100);
+                    }
                 });
             }
         } finally {

@@ -247,10 +247,31 @@ h1 {
     }
 }
 
+html {
+    scroll-behavior: smooth;
+}
+
 #post-container {
-    max-height: calc(100vh - 100px);
+    height: calc(100vh - 100px);
     overflow-y: auto;
     scroll-behavior: smooth;
+}
+
+#post-container::-webkit-scrollbar {
+    width: 8px;
+}
+
+#post-container::-webkit-scrollbar-track {
+    background: var(--linkedin-bg);
+}
+
+#post-container::-webkit-scrollbar-thumb {
+    background: var(--linkedin-blue);
+    border-radius: 4px;
+}
+
+#post-container::-webkit-scrollbar-thumb:hover {
+    background: var(--linkedin-blue-hover);
 }
 
 @keyframes spin {

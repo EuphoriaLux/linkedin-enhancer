@@ -234,6 +234,7 @@ document.addEventListener('DOMContentLoaded', () => {
     initializeWindowState();
     setupWindowResizeHandler();
     setupWindowControls();
+    setupScrollSync();
     
     // Restore last window size and position
     chrome.storage.local.get('windowSize', (data) => {
@@ -413,6 +414,54 @@ async function displayPosts(posts) {
     }
 
     postContainer.appendChild(fragment);
+}
+
+function setupScrollSync() {
+    const postContainer = document.getElementById('post-container');
+    let isScrolling = false;
+
+    if (postContainer) {
+        postContainer.addEventListener('scroll', debounce(() => {
+            if (!isScrolling) {
+                const scrollPosition = postContainer.scrollTop;
+                // Calculate relative scroll position as a percentage
+                const scrollPercentage = (scrollPosition / (postContainer.scrollHeight - postContainer.clientHeight)) * 100;
+                
+                chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
+                    if (tabs[0]) {
+                        chrome.tabs.sendMessage(tabs[0].id, {
+                            action: "syncScroll",
+                            position: scrollPosition,
+                            percentage: scrollPercentage,
+                            source: "extension"
+                        });
+                    }
+                });
+            }
+        }, 50));
+    }
+
+    // Listen for scroll sync messages from LinkedIn page
+    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+        if (request.action === "syncScroll" && request.source === "linkedin") {
+            const postContainer = document.getElementById('post-container');
+            if (postContainer) {
+                isScrolling = true;
+                // Calculate position based on the same percentage
+                const maxScroll = postContainer.scrollHeight - postContainer.clientHeight;
+                const scrollPosition = (request.percentage / 100) * maxScroll;
+                
+                postContainer.scrollTo({
+                    top: scrollPosition,
+                    behavior: 'smooth'
+                });
+                
+                setTimeout(() => {
+                    isScrolling = false;
+                }, 100);
+            }
+        }
+    });
 }
 
 function showDebugInfo(debugData) {
