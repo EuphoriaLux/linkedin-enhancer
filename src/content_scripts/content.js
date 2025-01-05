@@ -232,18 +232,9 @@ function initializeContentScript() {
             isProcessingScroll = false;
         }
     }, 250);
+}
 
-                } catch (error) {
-                    if (error.message.includes('Extension context invalidated')) {
-                        handleExtensionInvalidation();
-                    }
-                    console.error('Scroll handling error:', error);
-                } finally {
-                    isProcessingScroll = false;
-                }
-    }
-
-    function getVisiblePosts() {
+function getVisiblePosts() {
         const posts = [];
         const seenPosts = new Set(); // Track unique posts
     
