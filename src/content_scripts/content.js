@@ -1,23 +1,64 @@
 if (window.linkedInEnhancerInitialized) {
     console.log("LinkedIn Enhancer already initialized, skipping...");
 } else {
-    window.linkedInEnhancerInitialized = true;
-    let lastKnownPosts = [];
-    let isProcessingScroll = false;
-    let isScrolling = false;
-    
-    // Setup connection port
-    let port = null;
+    initializeContentScript();
+}
+
+function initializeContentScript() {
+    try {
+        window.linkedInEnhancerInitialized = true;
+        let lastKnownPosts = [];
+        let isProcessingScroll = false;
+        let isScrolling = false;
+        let port = null;
+        let isValid = true;
+
+        function handleExtensionInvalidation() {
+            isValid = false;
+            window.linkedInEnhancerInitialized = false;
+            removeEventListeners();
+            console.log("Extension context invalidated, cleaning up...");
+        }
+
+        function removeEventListeners() {
+            window.removeEventListener('scroll', handleScroll);
+            if (port) {
+                try {
+                    port.disconnect();
+                } catch (error) {
+                    // Ignore disconnection errors
+                }
+            }
+        }
+
+        // Setup connection port
     function setupConnectionPort() {
+        if (!isValid) return;
+
         try {
             port = chrome.runtime.connect({ name: "scroll-sync" });
             port.onDisconnect.addListener(() => {
+                if (chrome.runtime.lastError) {
+                    const error = chrome.runtime.lastError.message;
+                    if (error.includes('Extension context invalidated')) {
+                        handleExtensionInvalidation();
+                        return;
+                    }
+                }
                 console.log("Content script port disconnected, attempting reconnection...");
-                setTimeout(setupConnectionPort, 1000);
+                setTimeout(() => {
+                    if (isValid) setupConnectionPort();
+                }, 1000);
             });
         } catch (error) {
+            if (error.message.includes('Extension context invalidated')) {
+                handleExtensionInvalidation();
+                return;
+            }
             console.log("Content script port connection failed, retrying...");
-            setTimeout(setupConnectionPort, 1000);
+            setTimeout(() => {
+                if (isValid) setupConnectionPort();
+            }, 1000);
         }
     }
     setupConnectionPort();
@@ -25,26 +66,56 @@ if (window.linkedInEnhancerInitialized) {
     console.log("Content script loaded and running");
 
     function setupMessageListeners() {
+        if (!isValid) return;
+
         try {
             chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-                if (chrome.runtime.lastError) {
-                    console.error('Runtime error:', chrome.runtime.lastError);
-                    return;
+                if (!isValid) return;
+
+                try {
+                    if (request.action === "syncScroll" && request.source === "extension") {
+                        isScrolling = true;
+                        window.scrollTo({
+                            top: request.position,
+                            behavior: 'smooth'
+                        });
+                        setTimeout(() => {
+                            isScrolling = false;
+                        }, 100);
+                        sendResponse({ status: "success" });
+                    }
+                } catch (error) {
+                    if (error.message.includes('Extension context invalidated')) {
+                        handleExtensionInvalidation();
+                    }
+                    console.error('Message handling error:', error);
+                    sendResponse({ status: "error", message: error.message });
                 }
-                // Existing message listener code remains unchanged
+                return true;
             });
         } catch (error) {
-            console.error('Failed to setup message listeners:', error);
             if (error.message.includes('Extension context invalidated')) {
-                window.linkedInEnhancerInitialized = false;
+                handleExtensionInvalidation();
             }
+            console.error('Failed to setup message listeners:', error);
         }
     }
 
+    // Initialize the content script
+    setupConnectionPort();
     setupMessageListeners();
+    window.addEventListener('scroll', handleScroll);
 
-    // Add scroll event listener
-    window.addEventListener('scroll', debounce(handleScroll, 250));
+    // Cleanup on window unload
+    window.addEventListener('unload', () => {
+        removeEventListeners();
+    });
+
+    } catch (error) {
+        console.error('Content script initialization error:', error);
+        window.linkedInEnhancerInitialized = false;
+    }
+}
 
     function debounce(func, wait) {
         let timeout;
@@ -58,8 +129,8 @@ if (window.linkedInEnhancerInitialized) {
         };
     }
 
-    async function handleScroll() {
-        if (isProcessingScroll) return;
+    const handleScroll = debounce(() => {
+        if (!isValid || isProcessingScroll) return;
         
         try {
             isProcessingScroll = true;
@@ -68,19 +139,27 @@ if (window.linkedInEnhancerInitialized) {
             if (JSON.stringify(visiblePosts) !== JSON.stringify(lastKnownPosts)) {
                 lastKnownPosts = visiblePosts;
                 
-                try {
-                    await chrome.runtime.sendMessage({
-                        action: "updateVisiblePosts",
-                        posts: visiblePosts,
-                        timestamp: new Date().toISOString()
-                    });
-                } catch (error) {
+                if (!isValid) return;
+
+                chrome.runtime.sendMessage({
+                    action: "updateVisiblePosts",
+                    posts: visiblePosts,
+                    timestamp: new Date().toISOString()
+                }).catch(error => {
                     if (error.message.includes('Extension context invalidated')) {
-                        window.linkedInEnhancerInitialized = false;
-                        return;
+                        handleExtensionInvalidation();
                     }
-                    console.error('Failed to send message:', error);
-                }
+                });
+            }
+        } catch (error) {
+            if (error.message.includes('Extension context invalidated')) {
+                handleExtensionInvalidation();
+            }
+            console.error('Scroll handling error:', error);
+        } finally {
+            isProcessingScroll = false;
+        }
+    }, 250);
 
                 // Add scroll position tracking and syncing
                 window.addEventListener('scroll', debounce(() => {
