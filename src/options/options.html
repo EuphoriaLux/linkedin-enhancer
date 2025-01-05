@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LinkedIn Enhancer Options</title>
+    <style>
+        body {
+            padding: 20px;
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            background: #f8f9fa;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="text"], textarea, select {
+            width: 100%;
+            padding: 8px;
+            margin-bottom: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .range-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        input[type="range"] {
+            flex: 1;
+        }
+        .range-value {
+            min-width: 40px;
+        }
+        input[type="number"] {
+            width: 80px;
+        }
+        button {
+            background-color: #0077b5;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            display: none;
+        }
+        .success {
+            background-color: #dff0d8;
+            color: #3c763d;
+        }
+        .error {
+            background-color: #f2dede;
+            color: #a94442;
+        }
+        small {
+            display: block;
+            color: #666;
+            margin-top: 5px;
+        }
+        .tooltip {
+            cursor: help;
+            color: #0077b5;
+            margin-left: 5px;
+        }
+        h2 {
+            color: #0077b5;
+            margin-bottom: 20px;
+        }
+        h3 {
+            color: #333;
+            margin-bottom: 15px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid #0077b5;
+        }
+    </style>
+</head>
+<body>
+    <h2>LinkedIn Enhancer Settings</h2>
+
+    <!-- AI Configuration Section -->
+    <div class="section">
+        <h3>AI Configuration</h3>
+        <div class="form-group">
+            <label for="apiKey">Google AI API Key:</label>
+            <input type="text" id="apiKey" placeholder="Enter your Google AI API key">
+            <small>Get your API key from <a href="https://makersuite.google.com/app/apikey" target="_blank">Google AI Studio</a></small>
+        </div>
+        <div class="form-group">
+            <label for="aiModel">AI Model:</label>
+            <select id="aiModel" title="Select the AI model for comment generation">
+                <option value="gemini-pro">Gemini Pro</option>
+                <option value="gemini-pro-vision">Gemini Pro Vision</option>
+            </select>
+            <small>Select the AI model for comment generation</small>
+        </div>
+        <div class="form-group">
+            <label for="temperature">Creativity Level:</label>
+            <div class="range-container" title="Higher values generate more creative, varied responses">
+                <input type="range" id="temperature" min="0" max="1" step="0.1" value="0.7">
+                <span class="range-value" id="temperatureValue">0.7</span>
+            </div>
+            <small>Higher values generate more creative, varied responses</small>
+        </div>
+        <div class="form-group">
+            <label for="maxTokens">Maximum Comment Length:</label>
+            <div class="range-container" title="Maximum length of generated comments (in tokens)">
+                <input type="range" id="maxTokens" min="50" max="500" step="50" value="150">
+                <span class="range-value" id="maxTokensValue">150</span>
+            </div>
+            <small>Maximum length of generated comments (in tokens)</small>
+        </div>
+    </div>
+
+    <!-- Comment Generation Section -->
+    <div class="section">
+        <h3>Comment Generation</h3>
+        <div class="form-group">
+            <label for="defaultPrompt">Default Comment Prompt:</label>
+            <textarea id="defaultPrompt" rows="4" placeholder="Enter your default prompt template. Use {content} for post content and {name} for poster name."></textarea>
+            <small>Customize the base prompt for generating comments. Use <code>{content}</code> and <code>{name}</code> placeholders.</small>
+        </div>
+        <div class="form-group">
+            <label for="promptStyle">Prompt Style:</label>
+            <select id="promptStyle" title="Choose a pre-defined style for your comments">
+                <option value="professional-formal">Professional &amp; Formal</option>
+                <option value="interactive-engaging">Interactive &amp; Engaging</option>
+                <option value="analytical-thoughtful">Analytical &amp; Thoughtful</option>
+                <option value="supportive-encouraging">Supportive &amp; Encouraging</option>
+            </select>
+            <small>Choose a pre-defined style for your comments</small>
+        </div>
+        <div class="form-group">
+            <label for="blacklist">Blocked Words/Phrases:</label>
+            <textarea id="blacklist" rows="3" placeholder="Enter words or phrases to avoid in comments (one per line)"></textarea>
+            <small>These words/phrases will be avoided in generated comments</small>
+        </div>
+    </div>
+
+    <!-- Display Settings Section -->
+    <div class="section">
+        <h3>Display Settings</h3>
+        <div class="form-group">
+            <label for="theme">Theme:</label>
+            <select id="theme" title="Select the color theme for the extension">
+                <option value="light">Light</option>
+                <option value="dark">Dark</option>
+                <option value="system">System Default</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="fontSize">Font Size:</label>
+            <select id="fontSize" title="Adjust the font size in the extension's UI">
+                <option value="small">Small</option>
+                <option value="medium">Medium</option>
+                <option value="large">Large</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label for="maxPosts">Maximum Posts Displayed:</label>
+            <input type="number" id="maxPosts" min="1" max="50" value="10" title="Maximum number of posts to show in the popup window">
+            <small>Maximum number of posts to show in the popup window</small>
+        </div>
+    </div>
+
+    <!-- Advanced Settings Section -->
+    <div class="section">
+        <h3>Advanced Settings</h3>
+        <div class="form-group">
+            <label title="Show additional debugging information in the console">
+                <input type="checkbox" id="debugMode">
+                Enable Debug Mode
+            </label>
+            <small>Show additional debugging information in the console</small>
+        </div>
+        <div class="form-group">
+            <label title="Automatically expand the comment section after generation">
+                <input type="checkbox" id="autoExpand">
+                Auto-expand Comment Section
+            </label>
+            <small>Automatically expand the comment section after generation</small>
+        </div>
+        <div class="form-group">
+            <label for="customCSS">Custom CSS:</label>
+            <textarea id="customCSS" rows="4" placeholder="Enter custom CSS rules"></textarea>
+            <small>Advanced: Add custom CSS styles to modify the extension's appearance</small>
+        </div>
+    </div>
+
+    <button id="save">Save Settings</button>
+    <div id="status" class="status"></div>
+    <script src="options/options.js"></script>
+</body>
+</html>

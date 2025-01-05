@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>LinkedIn Post</title>
+    <link rel="stylesheet" href="assets/styles/styles.css">
+</head>
+<body>
+    <h1>LinkedIn Posts</h1>
+    <div id="debug-info" style="background: #f0f0f0; padding: 10px; margin: 10px 0; font-family: monospace; font-size: 12px;">
+        <div>Debug Information:</div>
+        <div id="message-count">Messages received: 0</div>
+        <div id="last-message"></div>
+    </div>
+    <div id="status-message" style="color: red;"></div>
+    <div id="loading-indicator" style="display: block;">Loading posts...</div>
+    <div id="post-container"></div>
+    <template id="post-template">
+        <div class="post-card">
+            <div class="post-header">
+                <h3 class="poster-name"></h3>
+            </div>
+            <div class="post-content"></div>
+            <div class="post-actions">
+                <button class="generate-comment-btn">Generate Comment</button>
+                <div class="generated-comment hidden">
+                    <h4>Generated Comment:</h4>
+                    <div class="comment-content"></div>
+                    <div class="prompt-display hidden"><h4>Prompt:</h4><pre class="prompt-text"></pre></div>
+                    <button class="copy-comment-btn">Copy</button>
+                </div>
+            </div>
+        </div>
+    </template>
+    <script src="api/api-service.js"></script>
+    <script src="window/window.js"></script>
+</body>
+</html>

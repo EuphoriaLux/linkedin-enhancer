@@ -1,0 +1,240 @@
+/* Base styles */
+:root {
+    --shadow-sm: 0 2px 4px rgba(0,0,0,0.08);
+    --shadow-md: 0 4px 12px rgba(0,0,0,0.12);
+    --radius-sm: 8px;
+    --radius-md: 16px;
+
+    /* Light theme colors */
+    --linkedin-blue: #0a66c2;
+    --linkedin-blue-hover: #004182;
+    --linkedin-bg: #f3f2ef;
+    --success-green: #057642;
+    --success-green-hover: #046235;
+    --text-primary: #191919;
+    --text-secondary: #666666;
+    --border-color: #e0e0e0;
+    --card-bg: #ffffff;
+}
+
+/* Dark theme colors */
+[data-theme="dark"] {
+    --linkedin-blue: #6db3f2;
+    --linkedin-blue-hover: #549dde;
+    --linkedin-bg: #121212;
+    --success-green: #3cb371;
+    --success-green-hover: #349b64;
+    --text-primary: #ffffff;
+    --text-secondary: #b0b0b0;
+    --border-color: #333333;
+    --card-bg: #1e1e1e;
+}
+
+/* System theme support */
+[data-theme="system"] {
+    @media (prefers-color-scheme: dark) {
+        --linkedin-blue: #6db3f2;
+        --linkedin-blue-hover: #549dde;
+        --linkedin-bg: #121212;
+        --success-green: #3cb371;
+        --success-green-hover: #349b64;
+        --text-primary: #ffffff;
+        --text-secondary: #b0b0b0;
+        --border-color: #333333;
+        --card-bg: #1e1e1e;
+    }
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+    padding: 24px;
+    max-width: 800px;
+    margin: 0 auto;
+    background-color: var(--linkedin-bg);
+    color: var(--text-primary);
+    line-height: 1.5;
+}
+
+h1 {
+    color: var(--linkedin-blue);
+    text-align: center;
+    margin-bottom: 24px;
+    font-size: 24px;
+    font-weight: 600;
+}
+
+.post-card {
+    background: var(--card-bg);
+    border-radius: var(--radius-sm);
+    box-shadow: var(--shadow-sm);
+    margin-bottom: 24px;
+    padding: 20px;
+    transition: box-shadow 0.2s ease;
+}
+
+.post-card:hover {
+    box-shadow: var(--shadow-md);
+}
+
+.post-header {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px;
+}
+
+.poster-name {
+    color: var(--linkedin-blue);
+    font-size: 16px;
+    font-weight: 600;
+    margin: 0;
+    text-decoration: none;
+}
+
+.poster-name:hover {
+    text-decoration: underline;
+}
+
+.post-content {
+    color: var(--text-primary);
+    font-size: 14px;
+    line-height: 1.6;
+    margin-bottom: 20px;
+    padding: 0 0 16px;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.post-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.generate-comment-btn {
+    background-color: var(--linkedin-blue);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    transition: background-color 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.generate-comment-btn:hover {
+    background-color: var(--linkedin-blue-hover);
+}
+
+.generate-comment-btn:disabled {
+    background-color: var(--text-secondary);
+    cursor: not-allowed;
+}
+
+.generated-comment {
+    margin-top: 16px;
+    padding: 16px;
+    background-color: var(--linkedin-bg);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+}
+
+.generated-comment h4 {
+    margin: 0 0 12px 0;
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.comment-content {
+    font-size: 14px;
+    line-height: 1.6;
+    color: var(--text-primary);
+    margin-bottom: 12px;
+    padding: 12px;
+    background: var(--card-bg);
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+}
+
+.copy-comment-btn {
+    background-color: var(--success-green);
+    color: white;
+    border: none;
+    padding: 8px 16px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    transition: background-color 0.2s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.copy-comment-btn:hover {
+    background-color: var(--success-green-hover);
+}
+
+#loading-indicator {
+    text-align: center;
+    color: var(--text-secondary);
+    padding: 24px;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+#status-message {
+    text-align: center;
+    color: #dc2626;
+    padding: 12px;
+    margin-bottom: 16px;
+    font-size: 14px;
+    background: #fef2f2;
+    border-radius: var(--radius-sm);
+    border: 1px solid #fee2e2;
+}
+
+#debug-info {
+    background: var(--card-bg);
+    padding: 16px;
+    margin: 16px 0;
+    font-family: monospace;
+    font-size: 12px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+}
+
+.hidden {
+    display: none;
+}
+
+@keyframes spin {
+    to { transform: rotate(360deg); }
+}
+
+.loading-spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--border-color);
+    border-top: 2px solid var(--linkedin-blue);
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.generated-comment {
+    transition: all 0.3s ease;
+}
+
+.generated-comment.hidden {
+    opacity: 0;
+    transform: translateY(-10px);
+}
