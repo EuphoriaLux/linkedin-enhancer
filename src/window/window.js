@@ -90,6 +90,7 @@ function setupWindowControls() {
 }
 
 let currentPosts = new Map();
+let processedPosts = new Set();
 
 function setupPostEventListeners(postElement, post) {
     const generateBtn = postElement.querySelector('.generate-comment-btn');
@@ -157,10 +158,16 @@ function updatePostsDisplay(posts) {
 
     if (!postContainer || !postTemplate) return;
 
-    // Create a map of new posts by their IDs
-    const newPostsMap = new Map(posts.map(post => [post.elementId, post]));
+    const newPostsMap = new Map();
     
-    // Remove posts that are no longer visible
+    posts.forEach(post => {
+        const postId = `${post.posterName}-${post.postContent.substring(0, 50)}`;
+        if (!processedPosts.has(postId)) {
+            newPostsMap.set(postId, post);
+            processedPosts.add(postId);
+        }
+    });
+
     for (const [postId, element] of currentPosts.entries()) {
         if (!newPostsMap.has(postId)) {
             element.classList.add('fade-out');
@@ -169,34 +176,27 @@ function updatePostsDisplay(posts) {
                     postContainer.removeChild(element);
                 }
                 currentPosts.delete(postId);
+                processedPosts.delete(postId);
             }, 300);
         }
     }
 
-    // Add or update visible posts
     for (const [postId, post] of newPostsMap.entries()) {
-        // Skip if post already exists
-        if (currentPosts.has(postId)) {
-            continue;
+        if (!currentPosts.has(postId)) {
+            const postElement = document.importNode(postTemplate.content, true).firstElementChild;
+            postElement.id = postId;
+            
+            postElement.querySelector('.poster-name').textContent = post.posterName;
+            postElement.querySelector('.post-content').textContent = post.postContent;
+            
+            setupPostEventListeners(postElement, post);
+            
+            postElement.classList.add('fade-in');
+            postContainer.appendChild(postElement);
+            currentPosts.set(postId, postElement);
+            
+            setTimeout(() => postElement.classList.remove('fade-in'), 300);
         }
-
-        // Create new post element
-        const postElement = document.importNode(postTemplate.content, true).firstElementChild;
-        postElement.id = postId;
-        
-        // Set post content
-        postElement.querySelector('.poster-name').textContent = post.posterName;
-        postElement.querySelector('.post-content').textContent = post.postContent;
-        
-        // Add event listeners for buttons
-        setupPostEventListeners(postElement, post);
-        
-        // Add to container with animation
-        postElement.classList.add('fade-in');
-        postContainer.appendChild(postElement);
-        currentPosts.set(postId, postElement);
-        
-        setTimeout(() => postElement.classList.remove('fade-in'), 300);
     }
 }
 
@@ -242,7 +242,17 @@ function setLoading(isLoading, message = 'Loading posts...') {
     }
 }
 
+function resetProcessedPosts() {
+    processedPosts.clear();
+    currentPosts.clear();
+    const postContainer = document.getElementById('post-container');
+    if (postContainer) {
+        postContainer.innerHTML = '';
+    }
+}
+
 document.addEventListener('DOMContentLoaded', () => {
+    resetProcessedPosts();
     console.log("Window DOM loaded");
     initializeTheme();
     setLoading(true);
@@ -460,44 +470,62 @@ function setupScrollSync() {
         postContainer.addEventListener('scroll', debounce(() => {
             if (!isScrolling) {
                 const scrollPosition = postContainer.scrollTop;
-                // Calculate relative scroll position as a percentage
                 const scrollPercentage = (scrollPosition / (postContainer.scrollHeight - postContainer.clientHeight)) * 100;
                 
                 chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
                     if (tabs[0]) {
-                        chrome.tabs.sendMessage(tabs[0].id, {
-                            action: "syncScroll",
-                            position: scrollPosition,
-                            percentage: scrollPercentage,
-                            source: "extension"
-                        });
+                        try {
+                            chrome.tabs.sendMessage(tabs[0].id, {
+                                action: "syncScroll",
+                                position: scrollPosition,
+                                percentage: scrollPercentage,
+                                source: "extension"
+                            }).catch(error => {
+                                console.log("Failed to send scroll sync message:", error);
+                            });
+                        } catch (error) {
+                            console.log("Error in scroll sync:", error);
+                        }
                     }
                 });
             }
         }, 50));
     }
 
-    // Listen for scroll sync messages from LinkedIn page
-    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-        if (request.action === "syncScroll" && request.source === "linkedin") {
-            const postContainer = document.getElementById('post-container');
-            if (postContainer) {
-                isScrolling = true;
-                // Calculate position based on the same percentage
-                const maxScroll = postContainer.scrollHeight - postContainer.clientHeight;
-                const scrollPosition = (request.percentage / 100) * maxScroll;
-                
-                postContainer.scrollTo({
-                    top: scrollPosition,
-                    behavior: 'smooth'
+    let messageListenerSetup = false;
+    
+    function setupMessageListener() {
+        if (!messageListenerSetup) {
+            try {
+                chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+                    if (request.action === "syncScroll" && request.source === "linkedin") {
+                        const postContainer = document.getElementById('post-container');
+                        if (postContainer) {
+                            isScrolling = true;
+                            const maxScroll = postContainer.scrollHeight - postContainer.clientHeight;
+                            const scrollPosition = (request.percentage / 100) * maxScroll;
+                            
+                            postContainer.scrollTo({
+                                top: scrollPosition,
+                                behavior: 'smooth'
+                            });
+                            
+                            setTimeout(() => {
+                                isScrolling = false;
+                            }, 100);
+                        }
+                    }
+                    return true;
                 });
-                
-                setTimeout(() => {
-                    isScrolling = false;
-                }, 100);
+                messageListenerSetup = true;
+            } catch (error) {
+                console.log("Failed to setup message listener:", error);
+                setTimeout(setupMessageListener, 1000);
             }
         }
-    });
+    }
+
+    setupMessageListener();
 }
 
 function showDebugInfo(debugData) {
