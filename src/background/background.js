@@ -9,7 +9,7 @@ chrome.action.onClicked.addListener(async (tab) => {
     
     if (!tab.url.includes("linkedin.com")) {
         // Show an error notification
-        await chrome.windows.create({
+        chrome.windows.create({
             url: chrome.runtime.getURL("window/window.html?error=not_linkedin"),
             type: "popup",
             width: 400,
@@ -25,8 +25,8 @@ chrome.action.onClicked.addListener(async (tab) => {
         const newWindow = await chrome.windows.create({
             url: "window/window.html",
             type: "popup",
-            width: 800,
-            height: 600
+            width: 1000,
+            height: 800
         });
 
         console.log("Injecting content script...");
@@ -53,23 +53,19 @@ chrome.action.onClicked.addListener(async (tab) => {
 
             console.log("Received response from content script:", response);
 
-            // Get the popup tab
-            const popupViews = chrome.extension.getViews({ type: "popup" });
-            if (popupViews && popupViews.length > 0) {
-                const popupView = popupViews[0];
+            // Get the tab in the new window
+            const windowTabs = await chrome.tabs.query({windowId: newWindow.id});
+            if (windowTabs && windowTabs[0]) {
+                const windowTabId = windowTabs[0].id;
 
-                // Send the posts to the popup
-                popupView.chrome.runtime.sendMessage({
+                // Send the posts to the new window
+                chrome.tabs.sendMessage(windowTabId, {
                     action: "setPostContent",
                     postContent: response?.posts || [],
                     debug: response?.debug || {}
-                }, function(response) {
-                    if (chrome.runtime.lastError) {
-                        console.error("Error sending message to popup:", chrome.runtime.lastError);
-                    } else {
-                        console.log("Response from popup:", response);
-                    }
                 });
+            } else {
+                console.error("Could not find tab in new window");
             }
         } catch (error) {
             console.error("Error in message handling:", error);
