@@ -11,11 +11,13 @@ chrome.action.onClicked.addListener(async (tab) => {
         timestamp: new Date().toISOString()
     });
     
+    console.log("Checking if the current tab is a LinkedIn page...");
     if (!tab.url.includes("linkedin.com")) {
         console.log("Not a LinkedIn page, skipping window creation");
         console.log("Not a LinkedIn page, showing error popup");
         try {
             const errorWindow = await chrome.windows.create({
+                focused: true,
                 url: chrome.runtime.getURL("window/window.html?error=not_linkedin"),
                 type: "popup",
                 width: 400,
@@ -29,19 +31,21 @@ chrome.action.onClicked.addListener(async (tab) => {
     }
 
     try {
-        console.log("About to create new window...");
+        console.log("Current tab is a LinkedIn page, proceeding with window creation...");
         const originalTabId = tab.id;
         console.log("Creating main window...");
 
         // Create the window first with full URL
         const windowUrl = chrome.runtime.getURL("window/window.html");
+        console.log("Setting focus to true for new window");
         console.log("Window URL:", windowUrl);
 
         const newWindow = await chrome.windows.create({
             url: windowUrl,
             type: "popup",
             width: 1000,
-            height: 800
+            height: 800,
+            focused: true
         }).catch(error => {
             console.error("Window creation failed:", error);
             throw error;
@@ -53,6 +57,7 @@ chrome.action.onClicked.addListener(async (tab) => {
         }
 
         if (!newWindow) {
+            console.error("New window is null or undefined");
             return;
         }
 
@@ -64,7 +69,7 @@ chrome.action.onClicked.addListener(async (tab) => {
             await chrome.scripting.executeScript({
                 target: { tabId: originalTabId },
                 files: ['content_scripts/content.js']
-            });
+            }).catch(error => {console.error("Error injecting content script:", error);});
 
             if (chrome.runtime.lastError) {
                 console.error("Error injecting content script:", chrome.runtime.lastError);
@@ -84,14 +89,14 @@ chrome.action.onClicked.addListener(async (tab) => {
         // Add delay with logging
         console.log("Starting delay before message send...");
         await new Promise(resolve => setTimeout(resolve, 1000));
-        console.log("Delay completed");
+        console.log("Delay completed, sending message to content script...");
 
         try {
             console.log("Sending message to content script...");
             const response = await new Promise((resolve, reject) => {
                 chrome.tabs.sendMessage(originalTabId, {
                     action: "getPostContent",
-                    timestamp: new Date().toISOString()
+                    timestamp: new Date().toISOString(),
                 }, response => {
                     if (chrome.runtime.lastError) {
                         console.error("Message send error:", chrome.runtime.lastError);
@@ -104,7 +109,7 @@ chrome.action.onClicked.addListener(async (tab) => {
             });
 
             console.log("Querying for window tabs...");
-            const windowTabs = await chrome.tabs.query({windowId: newWindow.id});
+            const windowTabs = await chrome.tabs.query({ windowId: newWindow.id });
             
             if (windowTabs && windowTabs[0]) {
                 const windowTabId = windowTabs[0].id;
@@ -117,7 +122,7 @@ chrome.action.onClicked.addListener(async (tab) => {
                     postContent: response?.posts || [],
                     debug: {
                         ...response?.debug || {},
-                        messageTimestamp: new Date().toISOString()
+                        messageTimestamp: new Date().toISOString(),
                     }
                 }).catch(error => {
                     console.error("Failed to send posts to window:", error);
@@ -147,5 +152,6 @@ chrome.action.onClicked.addListener(async (tab) => {
             stack: error.stack,
             timestamp: new Date().toISOString()
         });
+        console.error("Error in click handler:", error);
     }
 });
