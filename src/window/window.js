@@ -465,32 +465,55 @@ async function displayPosts(posts) {
 function setupScrollSync() {
     const postContainer = document.getElementById('post-container');
     let isScrolling = false;
+    let linkedInTabId = null;
+
+    // Get and store LinkedIn tab ID
+    chrome.tabs.query({ active: true, url: "*://*.linkedin.com/*" }, (tabs) => {
+        if (tabs && tabs[0]) {
+            linkedInTabId = tabs[0].id;
+            console.log("LinkedIn tab ID stored:", linkedInTabId);
+        }
+    });
 
     if (postContainer) {
         postContainer.addEventListener('scroll', debounce(() => {
-            if (!isScrolling) {
+            if (!isScrolling && linkedInTabId) {
                 const scrollPosition = postContainer.scrollTop;
                 const scrollPercentage = (scrollPosition / (postContainer.scrollHeight - postContainer.clientHeight)) * 100;
                 
-                chrome.tabs.query({active: true, currentWindow: true}, function(tabs) {
-                    if (tabs[0]) {
-                        try {
-                            chrome.tabs.sendMessage(tabs[0].id, {
-                                action: "syncScroll",
-                                position: scrollPosition,
-                                percentage: scrollPercentage,
-                                source: "extension"
-                            }).catch(error => {
-                                console.log("Failed to send scroll sync message:", error);
-                            });
-                        } catch (error) {
-                            console.log("Error in scroll sync:", error);
+                chrome.tabs.sendMessage(linkedInTabId, {
+                    action: "syncScroll",
+                    position: scrollPosition,
+                    percentage: scrollPercentage,
+                    source: "extension"
+                }).catch(error => {
+                    console.log("Scroll sync error, attempting to reconnect...");
+                    // Attempt to re-establish connection
+                    chrome.tabs.query({ active: true, url: "*://*.linkedin.com/*" }, (tabs) => {
+                        if (tabs && tabs[0]) {
+                            linkedInTabId = tabs[0].id;
                         }
-                    }
+                    });
                 });
             }
-        }, 50));
+        }, 100));
     }
+
+    // Setup message port for reliable communication
+    let port = null;
+    function connectPort() {
+        try {
+            port = chrome.runtime.connect({ name: "scroll-sync" });
+            port.onDisconnect.addListener(() => {
+                console.log("Port disconnected, attempting reconnection...");
+                setTimeout(connectPort, 1000);
+            });
+        } catch (error) {
+            console.log("Port connection failed, retrying...");
+            setTimeout(connectPort, 1000);
+        }
+    }
+    connectPort();
 
     let messageListenerSetup = false;
     

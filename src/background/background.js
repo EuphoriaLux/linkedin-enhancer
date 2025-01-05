@@ -4,6 +4,35 @@ chrome.runtime.onInstalled.addListener(() => {
     console.log("Service worker installed successfully");
 });
 
+// Setup connection handling
+let ports = new Map();
+
+chrome.runtime.onConnect.addListener((port) => {
+    if (port.name === "scroll-sync") {
+        const tabId = port.sender.tab.id;
+        ports.set(tabId, port);
+        
+        port.onDisconnect.addListener(() => {
+            ports.delete(tabId);
+        });
+        
+        port.onMessage.addListener((message) => {
+            if (message.action === "syncScroll") {
+                // Forward scroll sync messages to other connected ports
+                ports.forEach((p, id) => {
+                    if (id !== tabId) {
+                        try {
+                            p.postMessage(message);
+                        } catch (error) {
+                            console.log("Error forwarding scroll sync message:", error);
+                        }
+                    }
+                });
+            }
+        });
+    }
+});
+
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === "updateVisiblePosts") {
         // Forward the message to the extension window

@@ -5,6 +5,22 @@ if (window.linkedInEnhancerInitialized) {
     let lastKnownPosts = [];
     let isProcessingScroll = false;
     let isScrolling = false;
+    
+    // Setup connection port
+    let port = null;
+    function setupConnectionPort() {
+        try {
+            port = chrome.runtime.connect({ name: "scroll-sync" });
+            port.onDisconnect.addListener(() => {
+                console.log("Content script port disconnected, attempting reconnection...");
+                setTimeout(setupConnectionPort, 1000);
+            });
+        } catch (error) {
+            console.log("Content script port connection failed, retrying...");
+            setTimeout(setupConnectionPort, 1000);
+        }
+    }
+    setupConnectionPort();
 
     console.log("Content script loaded and running");
 
