@@ -53,27 +53,22 @@ chrome.action.onClicked.addListener(async (tab) => {
 
             console.log("Received response from content script:", response);
 
-            // Wait for the window to fully load
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            // Get the tab in the new window
-            const windowTabs = await chrome.tabs.query({windowId: newWindow.id});
-            if (windowTabs && windowTabs[0]) {
-                const popupTabId = windowTabs[0].id;
+            // Get the popup tab
+            const popupViews = chrome.extension.getViews({ type: "popup" });
+            if (popupViews && popupViews.length > 0) {
+                const popupView = popupViews[0];
 
-                // Send the posts to the popup window
-                await new Promise((resolve, reject) => {
-                    chrome.tabs.sendMessage(popupTabId, {
-                        action: "setPostContent",
-                        postContent: response?.posts || [],
-                        debug: response?.debug || {}
-                    }, response => {
-                        if (chrome.runtime.lastError) {
-                            reject(chrome.runtime.lastError);
-                        } else {
-                            resolve(response);
-                        }
-                    });
+                // Send the posts to the popup
+                popupView.chrome.runtime.sendMessage({
+                    action: "setPostContent",
+                    postContent: response?.posts || [],
+                    debug: response?.debug || {}
+                }, function(response) {
+                    if (chrome.runtime.lastError) {
+                        console.error("Error sending message to popup:", chrome.runtime.lastError);
+                    } else {
+                        console.log("Response from popup:", response);
+                    }
                 });
             }
         } catch (error) {
