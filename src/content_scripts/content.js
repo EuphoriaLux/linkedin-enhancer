@@ -1,7 +1,16 @@
 if (window.linkedInEnhancerInitialized) {
     console.log("LinkedIn Enhancer already initialized, skipping...");
 } else {
-    initializeContentScript();
+    try {
+        // Check if extension context is valid before initializing
+        if (chrome.runtime?.id) {
+            initializeContentScript();
+        } else {
+            console.log("Extension context invalid, skipping initialization");
+        }
+    } catch (error) {
+        console.error("Error during initialization check:", error);
+    }
 }
 
 function initializeContentScript() {
@@ -14,10 +23,46 @@ function initializeContentScript() {
         let isValid = true;
 
         function handleExtensionInvalidation() {
-            isValid = false;
-            window.linkedInEnhancerInitialized = false;
-            removeEventListeners();
-            console.log("Extension context invalidated, cleaning up...");
+            try {
+                isValid = false;
+                window.linkedInEnhancerInitialized = false;
+                
+                // Clear any pending timeouts
+                if (typeof timeout !== 'undefined') {
+                    clearTimeout(timeout);
+                }
+                
+                // Remove scroll listener
+                window.removeEventListener('scroll', handleScroll);
+                
+                // Disconnect port if it exists
+                if (port) {
+                    try {
+                        port.disconnect();
+                    } catch (error) {
+                        // Ignore disconnection errors
+                    }
+                    port = null;
+                }
+                
+                // Clear stored data
+                lastKnownPosts = [];
+                isProcessingScroll = false;
+                isScrolling = false;
+                
+                console.log("Extension context invalidated, cleanup completed");
+            } catch (error) {
+                console.error("Error during invalidation cleanup:", error);
+            }
+        }
+
+        // Add utility function to check extension validity
+        function isExtensionValid() {
+            try {
+                return chrome.runtime?.id && window.linkedInEnhancerInitialized && isValid;
+            } catch (error) {
+                return false;
+            }
         }
 
         function removeEventListeners() {
@@ -121,8 +166,19 @@ function initializeContentScript() {
         let timeout;
         return function executedFunction(...args) {
             const later = () => {
-                clearTimeout(timeout);
-                func(...args);
+                try {
+                    if (!window.linkedInEnhancerInitialized || !isValid) {
+                        clearTimeout(timeout);
+                        return;
+                    }
+                    clearTimeout(timeout);
+                    func.apply(this, args);
+                } catch (error) {
+                    if (error.message.includes('Extension context invalidated')) {
+                        handleExtensionInvalidation();
+                    }
+                    clearTimeout(timeout);
+                }
             };
             clearTimeout(timeout);
             timeout = setTimeout(later, wait);
@@ -130,26 +186,42 @@ function initializeContentScript() {
     }
 
     const handleScroll = debounce(() => {
-        if (!isValid || isProcessingScroll) return;
+        if (!window.linkedInEnhancerInitialized || !isValid || isProcessingScroll) {
+            return;
+        }
         
         try {
             isProcessingScroll = true;
+            
+            // Check extension context before proceeding
+            if (!chrome.runtime?.id) {
+                handleExtensionInvalidation();
+                return;
+            }
+
             const visiblePosts = getVisiblePosts();
             
             if (JSON.stringify(visiblePosts) !== JSON.stringify(lastKnownPosts)) {
                 lastKnownPosts = visiblePosts;
                 
-                if (!isValid) return;
-
-                chrome.runtime.sendMessage({
-                    action: "updateVisiblePosts",
-                    posts: visiblePosts,
-                    timestamp: new Date().toISOString()
-                }).catch(error => {
+                // Wrap in try-catch to handle potential runtime errors
+                try {
+                    chrome.runtime.sendMessage({
+                        action: "updateVisiblePosts",
+                        posts: visiblePosts,
+                        timestamp: new Date().toISOString()
+                    }, (response) => {
+                        if (chrome.runtime.lastError) {
+                            if (chrome.runtime.lastError.message.includes('Extension context invalidated')) {
+                                handleExtensionInvalidation();
+                            }
+                        }
+                    });
+                } catch (error) {
                     if (error.message.includes('Extension context invalidated')) {
                         handleExtensionInvalidation();
                     }
-                });
+                }
             }
         } catch (error) {
             if (error.message.includes('Extension context invalidated')) {
