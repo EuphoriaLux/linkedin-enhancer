@@ -21,9 +21,7 @@ chrome.storage.onChanged.addListener(function(changes, namespace) {
 
 chrome.runtime.onMessage.addListener(
     function(request, sender, sendResponse) {
-        chrome.runtime.sendMessage({ action: "popupReady" }, function(response) {
-            console.log("Popup script - Popup ready message sent to background script");
-        });
+        chrome.runtime.sendMessage({ action: "popupReady" });
         if (request.action === "setPostContent") {
             console.log("Popup script - Received posts:", request.postContent);
             const posts = request.postContent;

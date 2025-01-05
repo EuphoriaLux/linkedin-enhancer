@@ -23,7 +23,7 @@
   "options_page": "options/options.html",
   "web_accessible_resources": [
     {
-      "resources": ["assets/images/icon16.png", "assets/images/icon48.png", "assets/images/icon128.png"],
+      "resources": ["assets/images/icon16.png", "assets/images/icon48.png", "assets/images/icon128.png", "api/api-service.js"],
       "matches": ["https://www.linkedin.com/*"]
     }
   ],

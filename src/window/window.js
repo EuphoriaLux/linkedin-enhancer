@@ -11,7 +11,8 @@ function initializeTheme() {
 
 // Error display helper
 function showError(message, duration = 5000) {
-    const errorContainer = document.getElementById('error-container') || createErrorContainer();
+    const errorContainer = document.getElementById('error-container');
+    if (!errorContainer) return;
     errorContainer.textContent = message;
     errorContainer.classList.add('show');
     setTimeout(() => errorContainer.classList.remove('show'), duration);

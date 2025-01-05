@@ -54,8 +54,6 @@ if (window.linkedInEnhancerInitialized) {
                     });
                 }
             }
-            // Return false since we're sending the response synchronously
-            return false;
         }
     );
 
@@ -154,7 +152,7 @@ if (window.linkedInEnhancerInitialized) {
                 
                 const element = container.querySelector(selector);
                 if (element) {
-                    const content = element.innerText || element.textContent;
+                    const content = element.textContent;
                     if (content && content.trim()) {
                         debugLog(`Found ${type} using selector "${selector}":`, content.trim());
                         return content.trim();
@@ -177,7 +175,7 @@ if (window.linkedInEnhancerInitialized) {
             // Handle HTML entities and decode them
             const tempElement = document.createElement('div');
             tempElement.innerHTML = cleanedText;
-            cleanedText = tempElement.textContent || tempElement.innerText || "";
+            cleanedText = tempElement.textContent || "";
             return cleanedText;
         }
         return "";
