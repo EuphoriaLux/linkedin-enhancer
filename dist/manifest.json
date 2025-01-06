@@ -1,0 +1,58 @@
+{
+  "manifest_version": 3,
+  "name": "LinkedIn Comment Generator",
+  "version": "1.0",
+  "description": "Adds a button to generate comments for LinkedIn posts.",
+  "permissions": [
+    "scripting",
+    "activeTab",
+    "storage",
+    "tabs"
+  ],
+  "host_permissions": [
+    "https://www.linkedin.com/*",
+    "https://www.wort.lu/*",
+    "https://www.rtl.lu/*"
+  ],
+  "background": {
+    "service_worker": "background.bundle.js",
+    "type": "module"
+  },
+  "action": {
+    "default_title": "LinkedIn Comment Generator",
+    "default_popup": "popup.html",
+    "default_icon": {
+      "16": "assets/images/icon16.png",
+      "48": "assets/images/icon48.png",
+      "128": "assets/images/icon128.png"
+    }
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.linkedin.com/*"],
+      "js": ["content.bundle.js"],
+      "css": ["global.bundle.css"]
+    }
+  ],
+
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "window.html",
+        "styles/styles.css",
+        "content_generator/*",
+        "components/RSSfeed/fetcher.html",
+        "components/RSSfeed/fetcher.js"
+      ],
+      "matches": ["https://www.linkedin.com/*"]
+    }
+  ],
+  "options_page": "options.html",
+  "icons": {
+    "16": "assets/images/icon16.png",
+    "48": "assets/images/icon48.png",
+    "128": "assets/images/icon128.png"
+  },
+  "author": "Your Name",
+  "minimum_chrome_version": "88"
+}
