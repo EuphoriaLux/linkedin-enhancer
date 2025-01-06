@@ -12,7 +12,9 @@
   "host_permissions": [
     "https://www.linkedin.com/*",
     "https://www.wort.lu/*",
-    "https://www.rtl.lu/*"
+    "https://www.rtl.lu/*",
+    "https://partner-feeds.lessentiel.lu/rss/*",
+    "https://www.lessentiel.lu/*"
   ],
   "background": {
     "service_worker": "background.bundle.js",

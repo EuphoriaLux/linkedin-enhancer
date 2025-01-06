@@ -26,7 +26,7 @@
     function injectButtons() {
         // Define selectors to identify post containers
         const postSelectors = [
-            'div.occludable-update'       // Outermost LinkedIn post container
+            'div.occludable-update' // Outermost LinkedIn post container
             // Removed 'div.feed-shared-update-v2' to prevent duplicate injections
         ];
 
@@ -148,8 +148,6 @@
             alert('Failed to open comment window. Please allow popups for this site.');
         }
     }
-    
-
 
     // Function to sanitize HTML to prevent XSS
     function sanitizeHTML(str) {

@@ -4,52 +4,118 @@ import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import './Options.css'; // Ensure this file exists in the same directory
 
+const ApiRequestConfig = ({ title, prompt, setPrompt, aiModel, setAiModel, temperature, setTemperature, maxTokens, setMaxTokens }) => {
+    return (
+        <div className="api-config-section">
+            <h2>{title}</h2>
+            <div className="section">
+                <label>Prompt:</label>
+                <textarea
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    placeholder={`Enter your default prompt for ${title.toLowerCase()}...`}
+                    rows="4"
+                ></textarea>
+                <small>
+                    Customize the default prompt used for generating {title.toLowerCase()}. 
+                    Use placeholders like <code>{'{content}'}</code> and <code>{'{name}'}</code> as needed.
+                </small>
+            </div>
+            <div className="section">
+                <label>AI Model:</label>
+                <select
+                    value={aiModel}
+                    onChange={(e) => setAiModel(e.target.value)}
+                >
+                    <option value="gemini-pro">Gemini Pro</option>
+                    <option value="gemini-basic">Gemini Basic</option>
+                </select>
+            </div>
+            <div className="section">
+                <label>Temperature:</label>
+                <input
+                    type="number"
+                    value={temperature}
+                    onChange={(e) => setTemperature(e.target.value)}
+                    step="0.1"
+                    min="0"
+                    max="1"
+                />
+            </div>
+            <div className="section">
+                <label>Max Tokens:</label>
+                <input
+                    type="number"
+                    value={maxTokens}
+                    onChange={(e) => setMaxTokens(e.target.value)}
+                    min="50"
+                    max="1000"
+                />
+            </div>
+        </div>
+    );
+};
+
 const Options = () => {
     const [apiKey, setApiKey] = useState('');
-    const [defaultPrompt, setDefaultPrompt] = useState('');
-    const [aiModel, setAiModel] = useState('gemini-pro');
-    const [temperature, setTemperature] = useState(0.7);
-    const [maxTokens, setMaxTokens] = useState(150);
+    const [defaultCommentPrompt, setDefaultCommentPrompt] = useState('');
+    const [defaultPostPrompt, setDefaultPostPrompt] = useState('');
+    const [commentAiModel, setCommentAiModel] = useState('gemini-pro');
+    const [commentTemperature, setCommentTemperature] = useState(0.7);
+    const [commentMaxTokens, setCommentMaxTokens] = useState(150);
+    const [postAiModel, setPostAiModel] = useState('gemini-pro');
+    const [postTemperature, setPostTemperature] = useState(0.7);
+    const [postMaxTokens, setPostMaxTokens] = useState(150);
     const [blacklist, setBlacklist] = useState('');
     const [status, setStatus] = useState({ message: '', type: '' });
 
     // Load settings from chrome.storage.sync on component mount
     useEffect(() => {
         chrome.storage.sync.get(
-            ['apiKey', 'defaultPrompt', 'aiModel', 'temperature', 'maxTokens', 'blacklist'],
+            [
+                'apiKey',
+                'defaultCommentPrompt',
+                'defaultPostPrompt',
+                'commentAiModel',
+                'commentTemperature',
+                'commentMaxTokens',
+                'postAiModel',
+                'postTemperature',
+                'postMaxTokens',
+                'blacklist'
+            ],
             (result) => {
                 setApiKey(result.apiKey || '');
-                setDefaultPrompt(result.defaultPrompt || '');
-                setAiModel(result.aiModel || 'gemini-pro');
-                setTemperature(result.temperature || 0.7);
-                setMaxTokens(result.maxTokens || 150);
+                setDefaultCommentPrompt(result.defaultCommentPrompt || '');
+                setDefaultPostPrompt(result.defaultPostPrompt || '');
+                setCommentAiModel(result.commentAiModel || 'gemini-pro');
+                setCommentTemperature(result.commentTemperature || 0.7);
+                setCommentMaxTokens(result.commentMaxTokens || 150);
+                setPostAiModel(result.postAiModel || 'gemini-pro');
+                setPostTemperature(result.postTemperature || 0.7);
+                setPostMaxTokens(result.postMaxTokens || 150);
                 setBlacklist(result.blacklist || '');
             }
         );
     }, []);
 
-    // Function to save settings to chrome.storage.sync
     const saveSettings = () => {
-        // Basic validation
         if (!apiKey.trim()) {
             setStatus({ message: 'API key cannot be empty.', type: 'error' });
             return;
         }
 
-        // Optionally, validate API key format
-        if (!/^[A-Za-z0-9-_]+$/.test(apiKey.trim())) {
-            setStatus({ message: 'API key format is invalid.', type: 'error' });
-            return;
-        }
-
-        // Save to chrome.storage.sync
         chrome.storage.sync.set(
             {
                 apiKey: apiKey.trim(),
-                defaultPrompt: defaultPrompt.trim(),
-                aiModel: aiModel.trim(),
-                temperature: parseFloat(temperature),
-                maxTokens: parseInt(maxTokens, 10),
+                defaultCommentPrompt: defaultCommentPrompt.trim(),
+                defaultPostPrompt: defaultPostPrompt.trim(),
+                commentAiModel: commentAiModel.trim(),
+                commentTemperature: parseFloat(commentTemperature),
+                commentMaxTokens: parseInt(commentMaxTokens, 10),
+                postAiModel: postAiModel.trim(),
+                postTemperature: parseFloat(postTemperature),
+                postMaxTokens: parseInt(postMaxTokens, 10),
                 blacklist: blacklist.trim(),
             },
             () => {
@@ -66,114 +132,42 @@ const Options = () => {
         <div className="options-container">
             <h1>Extension Options</h1>
             
-            {/* API Key Configuration */}
             <div className="section">
-                <label htmlFor="apiKey">Google AI API Key:</label>
+                <label>Google AI API Key:</label>
                 <input
                     type="text"
-                    id="apiKey"
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
                     placeholder="Enter your API key..."
-                    required
                 />
-                <small>
-                    Your API key is used to authenticate requests to the Google AI service. 
-                    Keep it confidential and do not share it publicly.
-                </small>
             </div>
-            
-            {/* Default Prompt Configuration */}
-            <div className="section">
-                <label htmlFor="defaultPrompt">Default Prompt:</label>
-                <textarea
-                    id="defaultPrompt"
-                    value={defaultPrompt}
-                    onChange={(e) => setDefaultPrompt(e.target.value)}
-                    placeholder="Enter your default prompt..."
-                    rows="4"
-                ></textarea>
-                <small>
-                    Customize the default prompt used for generating comments and posts. 
-                    Use placeholders like <code>{'{content}'}</code> and <code>{'{name}'}</code> as needed.
-                </small>
-            </div>
-            
-            {/* AI Model Selection */}
-            <div className="section">
-                <label htmlFor="aiModel">AI Model:</label>
-                <select
-                    id="aiModel"
-                    value={aiModel}
-                    onChange={(e) => setAiModel(e.target.value)}
-                >
-                    <option value="gemini-pro">Gemini Pro</option>
-                    <option value="gemini-basic">Gemini Basic</option>
-                    {/* Add more models as needed */}
-                </select>
-            </div>
-            
-            {/* Temperature Configuration */}
-            <div className="section">
-                <label htmlFor="temperature">Temperature:</label>
-                <input
-                    type="number"
-                    id="temperature"
-                    value={temperature}
-                    onChange={(e) => setTemperature(e.target.value)}
-                    step="0.1"
-                    min="0"
-                    max="1"
-                />
-                <small>
-                    Controls the randomness of the AI's output. Lower values make the output more deterministic.
-                </small>
-            </div>
-            
-            {/* Max Tokens Configuration */}
-            <div className="section">
-                <label htmlFor="maxTokens">Max Tokens:</label>
-                <input
-                    type="number"
-                    id="maxTokens"
-                    value={maxTokens}
-                    onChange={(e) => setMaxTokens(e.target.value)}
-                    min="50"
-                    max="1000"
-                />
-                <small>
-                    The maximum number of tokens (words) the AI can generate in the response.
-                </small>
-            </div>
-            
-            {/* Blacklist Configuration */}
-            <div className="section">
-                <label htmlFor="blacklist">Blacklist Words:</label>
-                <textarea
-                    id="blacklist"
-                    value={blacklist}
-                    onChange={(e) => setBlacklist(e.target.value)}
-                    placeholder="Enter words to blacklist, one per line..."
-                    rows="4"
-                ></textarea>
-                <small>
-                    Words that should be censored in the generated content. Enter one word per line.
-                </small>
-            </div>
-            
-            {/* Save Button */}
-            <div className="section">
-                <button onClick={saveSettings} className="button button-primary">
-                    Save Settings
-                </button>
-            </div>
-            
-            {/* Status Message */}
-            {status.message && (
-                <div className={`status ${status.type}`}>
-                    {status.message}
-                </div>
-            )}
+
+            <ApiRequestConfig
+                title="Comment Configuration"
+                prompt={defaultCommentPrompt}
+                setPrompt={setDefaultCommentPrompt}
+                aiModel={commentAiModel}
+                setAiModel={setCommentAiModel}
+                temperature={commentTemperature}
+                setTemperature={setCommentTemperature}
+                maxTokens={commentMaxTokens}
+                setMaxTokens={setCommentMaxTokens}
+            />
+
+            <ApiRequestConfig
+                title="Post Configuration"
+                prompt={defaultPostPrompt}
+                setPrompt={setDefaultPostPrompt}
+                aiModel={postAiModel}
+                setAiModel={setPostAiModel}
+                temperature={postTemperature}
+                setTemperature={setPostTemperature}
+                maxTokens={postMaxTokens}
+                setMaxTokens={setPostMaxTokens}
+            />
+
+            <button onClick={saveSettings} className="button button-primary">Save Settings</button>
+            {status.message && <div className={`status ${status.type}`}>{status.message}</div>}
         </div>
     );
 };

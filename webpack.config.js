@@ -10,12 +10,12 @@ module.exports = {
   entry: {
     popup: './src/components/Popup/Popup.jsx',
     options: './src/components/Options/Options.jsx',
-    rssfeed: './src/components/RSSfeed/RSSfeed.jsx', // New entry for RSSfeed
+    rssfeed: './src/components/RSSfeed/RSSfeed.jsx',
     contentGenerator: './src/components/ContentGenerator/ContentGenerator.jsx',
     window: './src/components/Window/Window.jsx',
     background: './src/background/background.js',
     content: './src/content_scripts/content.js',
-    global: './src/assets/styles/styles.css', // New entry for global styles
+    global: './src/assets/styles/styles.css', 
   },
   output: {
     path: path.resolve(__dirname, 'dist'),
@@ -43,8 +43,9 @@ module.exports = {
   resolve: {
     extensions: ['.js', '.jsx'], // Resolves these extensions
     alias: {
-      Services: path.resolve(__dirname, 'src/services/') // Add alias for services
-    }
+      Services: path.resolve(__dirname, 'src/services/'), // Existing alias
+      Utils: path.resolve(__dirname, 'src/utils/'), // New alias
+    },
   },
   plugins: [
     new CleanWebpackPlugin(), // Cleans the dist folder before each build

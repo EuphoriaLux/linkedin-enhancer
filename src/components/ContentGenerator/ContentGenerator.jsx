@@ -1,10 +1,12 @@
-// src/components/ContentGenerator/content_generator.jsx
+// src/components/ContentGenerator/ContentGenerator.jsx
 
 import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { FaCopy, FaLinkedin } from 'react-icons/fa';
 import './ContentGenerator.css';
+import { extractArticleContent } from '../../Utils/contentExtractor.js';
 
+const PLACEHOLDER_FEED_IMAGE = 'https://via.placeholder.com/150?text=No+Image';
 const PLACEHOLDER_ARTICLE_IMAGE = 'https://via.placeholder.com/150?text=No+Image';
 
 const ContentGenerator = () => {
@@ -16,224 +18,308 @@ const ContentGenerator = () => {
   const [status, setStatus] = useState({ message: '', type: '' });
   const iframeRef = useRef(null);
 
-  // Load RSS feeds from chrome.storage on component mount
+  // Fetch RSS Feeds on mount
   useEffect(() => {
     chrome.storage.sync.get(['rssFeeds'], (result) => {
       if (result.rssFeeds && result.rssFeeds.length > 0) {
         setRssFeeds(result.rssFeeds);
-        setSelectedFeed(result.rssFeeds[0]); // Select the first feed by default
+        setSelectedFeed(result.rssFeeds[0]);
+        console.log('📥 Loaded RSS Feeds:', result.rssFeeds);
       } else {
         setRssFeeds([]);
-        console.log('No RSS Feeds Found.');
+        setStatus({
+          message: 'No RSS feeds available. Please add some in the Options page.',
+          type: 'error',
+        });
       }
     });
   }, []);
 
-  // Load articles when a feed is selected
+  // Fetch Articles when a feed is selected
   useEffect(() => {
     if (selectedFeed) {
+      setArticles([]);
+      setSelectedArticle(null);
+      setGeneratedContent('');
+      setStatus({ message: `Fetching articles from ${selectedFeed.title}...`, type: 'info' });
       fetchRSSFeedArticles(selectedFeed.url);
     }
   }, [selectedFeed]);
 
-  // Function to fetch and parse RSS feed articles via iframe
   const fetchRSSFeedArticles = (feedUrl) => {
     if (iframeRef.current) {
+      console.log('🔄 Fetching RSS Feed:', feedUrl);
       iframeRef.current.contentWindow.postMessage(
         { action: 'fetchRSSFeed', feedUrl },
         window.location.origin
       );
-      setStatus({ message: 'Fetching RSS feed articles...', type: 'info' });
+    } else {
+      console.error('❌ Iframe reference is not set.');
     }
   };
 
-  // Setup message listener for fetcher iframe
+  // Listen for messages from the iframe
   useEffect(() => {
     const messageHandler = (event) => {
-      // Ensure the message is coming from the fetcher iframe
-      if (event.source !== iframeRef.current.contentWindow) {
-        return;
-      }
+      if (!iframeRef.current || event.source !== iframeRef.current.contentWindow) return;
 
       const { action, feed, error } = event.data;
 
       if (action === 'rssFeedData' && feed) {
-        setArticles(feed.items);
-        setSelectedArticle(feed.items[0]);
-        setStatus({ message: 'RSS feed articles loaded.', type: 'success' });
-        console.log('RSS Feed Articles Loaded:', feed.items);
-      } else if (action === 'rssFeedError' && error) {
+        console.log('📥 RSS Feed Data Received:', feed);
+        if (feed.items && feed.items.length > 0) {
+          setArticles(feed.items);
+          setSelectedArticle(feed.items[0]);
+          setStatus({ message: 'RSS feed articles loaded successfully.', type: 'success' });
+        } else {
+          setStatus({ message: 'No articles found in this feed.', type: 'warning' });
+          setArticles([]);
+        }
+      } else if (action === 'rssFeedError') {
+        console.error('❌ RSS Feed Error:', error);
         setStatus({ message: `Failed to fetch RSS feed. Error: ${error}`, type: 'error' });
-        console.error('Fetch RSS Feed Error:', error);
       }
     };
 
     window.addEventListener('message', messageHandler);
-
-    return () => {
-      window.removeEventListener('message', messageHandler);
-    };
+    return () => window.removeEventListener('message', messageHandler);
   }, []);
 
-  // Function to generate comment using AI
-  const generateComment = () => {
+  // Fetch website content
+  const fetchWebsiteContent = async (url) => {
+    setStatus({ message: 'Fetching website content...', type: 'info' });
+    try {
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`Failed to fetch website content: ${response.statusText}`);
+      }
+
+      const htmlString = await response.text();
+
+      // Extract content
+      const cleanContent = extractArticleContent(htmlString);
+      return cleanContent.substring(0, 2000);
+    } catch (error) {
+      console.error('❌ Error fetching website content:', error);
+      return 'Content extraction failed.';
+    }
+  };
+
+  // Generate Post
+  const generatePost = async () => {
     if (!selectedArticle) {
-      setStatus({ message: 'Please select an article.', type: 'error' });
+      setStatus({ message: 'Please select an article first.', type: 'error' });
       return;
     }
 
-    const posterName = 'LinkedInUser'; // You can make this dynamic if needed
+    const posterName = 'LinkedInUser';
     const articleContent = selectedArticle.description || selectedArticle.title || '';
+
+    setStatus({ message: 'Generating post...', type: 'info' });
+
+    const extractedWebsiteContent = await fetchWebsiteContent(selectedArticle.link);
 
     chrome.runtime.sendMessage(
       {
-        action: 'generateComment',
-        posterName: posterName,
-        articleContent: articleContent,
+        action: 'generatePost',
+        posterName,
+        articleContent,
+        websiteContent: extractedWebsiteContent,
+        websiteURL: selectedArticle.link,
       },
       (response) => {
         if (chrome.runtime.lastError) {
-          console.error('Generate Comment Error:', chrome.runtime.lastError.message);
-          setStatus({ message: 'Failed to generate comment.', type: 'error' });
+          setStatus({ message: 'Failed to generate post.', type: 'error' });
+          console.error('❌ Generate Post Error:', chrome.runtime.lastError.message);
           return;
         }
 
-        if (response && response.comment) {
-          setGeneratedContent(response.comment);
-          setStatus({ message: 'Comment generated successfully!', type: 'success' });
+        if (response && response.post) {
+          setGeneratedContent(response.post);
+          setStatus({ message: 'Post generated successfully!', type: 'success' });
         } else if (response && response.error) {
           setStatus({ message: response.error, type: 'error' });
-          console.error('Generate Comment Error:', response.error);
+          console.error('❌ Generate Post Error:', response.error);
         }
       }
     );
   };
 
-  // Function to copy the prepared LinkedIn post to clipboard
-  const copyToClipboard = () => {
-    const postContent = `💬 ${generatedContent}\n\n📖 ${selectedArticle.link}\n\n#LinkedIn #AI #Automation`;
-    navigator.clipboard.writeText(postContent)
+  // Copy to Clipboard
+  const copyToClipboard = (text) => {
+    navigator.clipboard
+      .writeText(text)
       .then(() => {
-        setStatus({ message: 'Post copied to clipboard!', type: 'success' });
+        setStatus({ message: 'Copied to clipboard!', type: 'success' });
       })
       .catch((err) => {
-        setStatus({ message: 'Failed to copy post.', type: 'error' });
-        console.error('Copy Error:', err);
+        console.error('❌ Failed to copy text:', err);
+        setStatus({ message: 'Failed to copy text.', type: 'error' });
       });
   };
 
-  // Function to open LinkedIn post creation with pre-filled content
-  const openLinkedInPost = () => {
-    const postContent = `💬 ${generatedContent}\n\n📖 ${selectedArticle.link}\n\n#LinkedIn #AI #Automation`;
-    const linkedinUrl = `https://www.linkedin.com/feed/`;
-
-    // Note: LinkedIn does not support pre-filling post content via URL parameters due to security reasons.
-    // Therefore, users need to manually paste the content. We can guide them accordingly.
-    window.open(linkedinUrl, '_blank');
-    setStatus({ message: 'Please paste the copied content into your LinkedIn post.', type: 'info' });
+  // Open LinkedIn
+  const openLinkedIn = () => {
+    window.open('https://www.linkedin.com/', '_blank');
   };
 
   return (
-    <div className="content-generator-container">
-      <h1>Content Generator</h1>
-      
-      {/* RSS Feed Selection */}
-      <div className="section">
-        <h3>Select RSS Feed</h3>
-        {rssFeeds.length > 0 ? (
-          <select
-            value={selectedFeed ? selectedFeed.url : ''}
-            onChange={(e) => {
-              const feed = rssFeeds.find(feed => feed.url === e.target.value);
-              setSelectedFeed(feed);
-            }}
-            title="Select an RSS feed"
-          >
-            {rssFeeds.map((feed, index) => (
-              <option key={index} value={feed.url}>
-                {feed.title}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <p>No RSS feeds available. Please add some in the Options page.</p>
-        )}
+    <div className="content-generator">
+      <div className="content-generator__header">
+        <h1>Content Generator</h1>
       </div>
 
-      {/* Article Selection */}
-      {articles.length > 0 && (
-        <div className="section">
-          <h3>Select Article</h3>
-          <select
-            value={selectedArticle ? selectedArticle.link : ''}
-            onChange={(e) => {
-              const article = articles.find(article => article.link === e.target.value);
-              setSelectedArticle(article);
-              setGeneratedContent(''); // Clear previous generated content
-            }}
-            title="Select an article to generate content"
-          >
-            {articles.map((article, index) => (
-              <option key={index} value={article.link}>
-                {article.title}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {/* Display Selected Article */}
-      {selectedArticle && (
-        <div className="section">
-          <h3>Selected Article</h3>
-          <div className="article-info">
-            <img
-              src={selectedArticle.thumbnail || PLACEHOLDER_ARTICLE_IMAGE}
-              alt={`${selectedArticle.title} image`}
-              className="article-image"
-              onError={(e) => {
-                e.target.onerror = null;
-                e.target.src = PLACEHOLDER_ARTICLE_IMAGE;
-              }}
-            />
-            <div className="article-details">
-              <h4>{selectedArticle.title}</h4>
-              <p>{selectedArticle.description}</p>
-              <a href={selectedArticle.link} target="_blank" rel="noopener noreferrer">Read More</a>
-            </div>
-          </div>
-          <button onClick={generateComment} className="button button-primary">
-            Generate Comment
-          </button>
-        </div>
-      )}
-
-      {/* Display Generated Content */}
-      {generatedContent && (
-        <div className="section">
-          <h3>Generated Content</h3>
-          <textarea
-            rows="4"
-            value={generatedContent}
-            readOnly
-          ></textarea>
-          <div className="button-group">
-            <button onClick={copyToClipboard} className="button button-secondary">
-              <FaCopy /> Copy Post
-            </button>
-            <button onClick={openLinkedInPost} className="button button-secondary">
-              <FaLinkedin /> Open LinkedIn
-            </button>
-          </div>
-        </div>
-      )}
-
-      {/* Status Message */}
       {status.message && (
-        <div className={`status ${status.type}`}>
+        <div
+          className={`content-generator__status content-generator__status--${status.type}`}
+          aria-live="polite"
+        >
+          {/* Optional: Add icons based on status type */}
+          {/* Example: <FaCheckCircle /> for success */}
           {status.message}
         </div>
       )}
+
+      <div className="content-generator__main">
+        {/* RSS Feed Selection */}
+        <div className="content-generator__section">
+          <h3>Select RSS Feed</h3>
+          {rssFeeds.length > 0 ? (
+            <div className="content-generator__list">
+              {rssFeeds.map((feed, index) => (
+                <div
+                  key={index}
+                  className={`content-generator__item ${
+                    selectedFeed?.url === feed.url ? 'content-generator__item--selected' : ''
+                  }`}
+                  onClick={() => setSelectedFeed(feed)}
+                  role="button"
+                  tabIndex={0}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      setSelectedFeed(feed);
+                    }
+                  }}
+                >
+                  <img
+                    src={feed.image || PLACEHOLDER_FEED_IMAGE}
+                    alt={feed.title}
+                    className="content-generator__image"
+                    loading="lazy"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = PLACEHOLDER_FEED_IMAGE;
+                    }}
+                  />
+                  <div className="content-generator__title">{feed.title}</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="content-generator__no-selection">
+              No RSS feeds available. Please add some in the Options page.
+            </p>
+          )}
+        </div>
+
+        {/* Article Selection */}
+        <div className="content-generator__section">
+          <h3>Select Article</h3>
+          {articles.length > 0 ? (
+            <div className="content-generator__list">
+              {articles.map((article, index) => (
+                <div
+                  key={index}
+                  className={`content-generator__item ${
+                    selectedArticle?.link === article.link
+                      ? 'content-generator__item--selected'
+                      : ''
+                  }`}
+                  onClick={() => {
+                    setSelectedArticle(article);
+                    setGeneratedContent('');
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      setSelectedArticle(article);
+                      setGeneratedContent('');
+                    }
+                  }}
+                >
+                  <img
+                    src={article.image || PLACEHOLDER_ARTICLE_IMAGE}
+                    alt={article.title}
+                    className="content-generator__image"
+                    loading="lazy"
+                    onError={(e) => {
+                      e.target.onerror = null;
+                      e.target.src = PLACEHOLDER_ARTICLE_IMAGE;
+                    }}
+                  />
+                  <div className="content-generator__title">{article.title}</div>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="content-generator__no-selection">No articles available for this feed.</p>
+          )}
+        </div>
+
+        {/* Article Preview */}
+        {selectedArticle && (
+          <div className="content-generator__section">
+            <h3>Article Preview</h3>
+            <div className="content-generator__preview">
+              <h4>{selectedArticle.title}</h4>
+              <p>{selectedArticle.description || 'No description available.'}</p>
+              <a href={selectedArticle.link} target="_blank" rel="noopener noreferrer">
+                Read more
+              </a>
+            </div>
+          </div>
+        )}
+
+        {/* Generated Post */}
+        <div className="content-generator__section content-generator__post-section">
+          <h3>Generated Post</h3>
+          {generatedContent ? (
+            <div className="content-generator__generated-post">
+              <div className="content-generator__content">{generatedContent}</div>
+              <div className="content-generator__actions">
+                <button
+                  onClick={() => copyToClipboard(generatedContent)}
+                  className="content-generator__button content-generator__button--secondary"
+                >
+                  <FaCopy /> Copy to Clipboard
+                </button>
+                <button
+                  onClick={openLinkedIn}
+                  className="content-generator__button content-generator__button--primary"
+                >
+                  <FaLinkedin /> Open LinkedIn
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div>
+              {selectedArticle ? (
+                <button
+                  onClick={generatePost}
+                  className="content-generator__button content-generator__button--primary content-generator__generate-button"
+                >
+                  Generate Post
+                </button>
+              ) : (
+                <p className="content-generator__no-selection">
+                  Please select an article to generate a post.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Hidden Fetcher Iframe */}
       <iframe

@@ -1,12 +1,14 @@
+// src/components/Window/Window.jsx
+
 import React, { useState } from 'react';
 import ReactDOM from 'react-dom';
 import { FaCopy, FaCheckCircle } from 'react-icons/fa'; // Import icons
 import './Window.css';
 
-
 const WindowComponent = () => {
   const params = new URLSearchParams(window.location.search);
-  const comment = params.get('comment') || 'No comment generated.';
+  const comment = params.get('comment') || '';
+  const post = params.get('post') || '';
   const [copySuccess, setCopySuccess] = useState(false); // Boolean for copy status
 
   const handleClose = () => {
@@ -14,24 +16,40 @@ const WindowComponent = () => {
   };
 
   const handleCopy = () => {
-    if (!comment) return;
+    let contentToCopy = '';
+    if (comment) {
+      contentToCopy = comment;
+    } else if (post) {
+      contentToCopy = post;
+    }
+
+    if (!contentToCopy) return;
 
     navigator.clipboard
-      .writeText(comment)
+      .writeText(contentToCopy)
       .then(() => {
         setCopySuccess(true);
         setTimeout(() => setCopySuccess(false), 3000);
       })
       .catch((err) => {
         console.error('Failed to copy: ', err);
-        alert('Failed to copy comment.');
+        alert('Failed to copy content.');
       });
   };
 
+  // Determine the type of content to display
+  const isComment = comment !== '';
+  const isPost = post !== '';
+
   return (
     <div className="window-container">
-      <h2>Generated Comment</h2>
-      <div className="comment-container">{comment}</div>
+      <h2>{isComment ? 'Generated Comment' : isPost ? 'Generated Post' : 'Content'}</h2>
+      
+      <div className="content-container">
+        {isComment && <div className="content">{comment}</div>}
+        {isPost && <div className="content">{post}</div>}
+      </div>
+
       <div className="button-group">
         <button onClick={handleCopy} className="button button-primary copy-button">
           {copySuccess ? (
@@ -48,6 +66,7 @@ const WindowComponent = () => {
           Close
         </button>
       </div>
+      
       {copySuccess && <span className="copy-feedback">Copied!</span>}
     </div>
   );

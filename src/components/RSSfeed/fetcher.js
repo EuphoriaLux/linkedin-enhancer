@@ -2,67 +2,81 @@
 
 // Listen for messages from the parent window
 window.addEventListener('message', async (event) => {
-  console.log('Fetcher received message:', event.data);
-
-  // Ensure the message is coming from your extension
-  if (event.origin !== window.location.origin) {
-    console.warn('Fetcher received message from unknown origin:', event.origin);
-    return;
-  }
+  if (event.origin !== window.location.origin) return;
 
   const { action, feedUrl } = event.data;
 
-  if (action === 'fetchRSSFeed' && feedUrl) {
+  if (action === 'fetchRSSFeed') {
     try {
-      console.log(`Fetching RSS feed from: ${feedUrl}`);
-      // Attempt to fetch the RSS feed
       const response = await fetch(feedUrl);
       if (!response.ok) {
         throw new Error(`Network response was not ok: ${response.statusText}`);
       }
-      const xmlText = await response.text();
-
+      const text = await response.text();
+      
       // Parse the RSS feed
       const parser = new DOMParser();
-      const xml = parser.parseFromString(xmlText, "application/xml");
+      const xml = parser.parseFromString(text, "application/xml");
 
-      const parseError = xml.querySelector("parsererror");
-      if (parseError) {
-        throw new Error("Error parsing RSS feed XML.");
+      // Check for parsererror
+      if (xml.querySelector("parsererror")) {
+        throw new Error("Error parsing RSS feed.");
       }
 
-      // Extract feed details
-      const channel = xml.querySelector("channel");
-      if (!channel) {
-        throw new Error("Invalid RSS feed structure.");
+      // Extract feed information
+      const feedTitle = xml.querySelector("channel > title")?.textContent || "No Title";
+      let feedImage = xml.querySelector("channel > image > url")?.textContent || null;
+
+      // If feedImage is a relative URL, convert it to absolute
+      if (feedImage && !/^https?:\/\//i.test(feedImage)) {
+        const baseUrl = new URL(feedUrl).origin;
+        feedImage = new URL(feedImage, baseUrl).href;
       }
 
-      const title = channel.querySelector("title")?.textContent || "No Title";
-      const image = channel.querySelector("image > url")?.textContent || "";
+      // Extract items
+      const items = Array.from(xml.querySelectorAll("item")).map(item => {
+        // Attempt to extract image from different possible fields
+        let image = item.querySelector("media\\:content, content\\:media, enclosure[url][type^='image/']")?.getAttribute('url') ||
+                    item.querySelector("description img")?.getAttribute('src') ||
+                    null;
+        
+        // If image is embedded in description as HTML
+        if (!image) {
+          const description = item.querySelector("description")?.textContent || "";
+          const imgMatch = description.match(/<img[^>]+src="([^">]+)"/);
+          image = imgMatch ? imgMatch[1] : null;
+        }
 
-      const items = channel.querySelectorAll("item");
-      const feedItems = Array.from(items).map(item => ({
-        title: item.querySelector("title")?.textContent || "No Title",
-        link: item.querySelector("link")?.textContent || "",
-        description: item.querySelector("description")?.textContent || "",
-        pubDate: item.querySelector("pubDate")?.textContent || "",
-        thumbnail: item.querySelector("enclosure")?.getAttribute("url") || ""
-      }));
+        // Convert relative image URLs to absolute
+        if (image && !/^https?:\/\//i.test(image)) {
+          const baseUrl = new URL(feedUrl).origin;
+          image = new URL(image, baseUrl).href;
+        }
 
+        return {
+          title: item.querySelector("title")?.textContent || "No Title",
+          link: item.querySelector("link")?.textContent || "",
+          description: item.querySelector("description")?.textContent || "",
+          pubDate: item.querySelector("pubDate")?.textContent || "",
+          image: image, // May be null
+        };
+      });
+
+      // Construct the feed object
       const feed = {
-        title,
-        image,
-        items: feedItems
+        title: feedTitle,
+        url: feedUrl,
+        image: feedImage, // May be null
+        items: items,
       };
 
-      console.log('RSS feed fetched and parsed successfully:', feed);
+      console.log('📥 Feed Data:', feed); // Debugging
 
-      // Send the feed data back to the parent window
-      window.parent.postMessage({ action: 'rssFeedData', feed }, window.location.origin);
+      // Post the feed data back to the parent
+      event.source.postMessage({ action: 'rssFeedData', feed }, event.origin);
     } catch (error) {
-      console.error('Error fetching RSS feed:', error);
-      // Send the error back to the parent window
-      window.parent.postMessage({ action: 'rssFeedError', error: error.message }, window.location.origin);
+      console.error('❌ Error fetching RSS feed:', error);
+      event.source.postMessage({ action: 'rssFeedError', error: error.message }, event.origin);
     }
   }
 });

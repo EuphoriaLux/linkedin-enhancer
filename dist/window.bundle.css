@@ -1,22 +1,22 @@
 /* src/components/Window/Window.css */
 
-.window-container {
+.window {
   font-family: var(--font-family);
   padding: 30px;
   max-width: 500px;
   margin: 0 auto;
-  background-color: #fff;
+  background-color: #ffffff;
   border-radius: 8px;
   box-shadow: var(--box-shadow);
 }
 
-.window-container h2 {
+.window__title {
   font-size: 24px;
   margin-bottom: 20px;
   text-align: center;
 }
 
-.comment-container {
+.window__comment {
   margin: 20px 0;
   background-color: #f1f1f1;
   padding: 20px;
@@ -28,9 +28,9 @@
   line-height: 1.5;
 }
 
-.close-button {
-  background-color: #6c757d;
-  color: #fff;
+.window__close-button {
+  background-color: var(--secondary-color);
+  color: #ffffff;
   display: inline-flex;
   align-items: center;
   padding: 10px 20px;
@@ -40,10 +40,11 @@
   cursor: pointer;
   transition: background-color var(--transition-speed), opacity var(--transition-speed);
   box-shadow: var(--box-shadow);
+  align-self: flex-end;
 }
 
-.close-button:hover {
-  background-color: #5a6268;
+.window__close-button:hover {
+  background-color: var(--secondary-hover);
 }
 
 
