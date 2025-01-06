@@ -1,14 +1,14 @@
-// content.js
+// content_scripts/content.js
 
 (function() {
     if (window.linkedInEnhancerInitialized) {
-        console.log("LinkedIn Enhancer already initialized, skipping...");
+        console.log("LinkedIn Comment Generator already initialized.");
         return;
     }
 
     window.linkedInEnhancerInitialized = true;
 
-    const DEBUG = true; // Set to false to disable debug logs
+    const DEBUG = true;
 
     function debugLog(...args) {
         if (DEBUG) {
@@ -22,134 +22,148 @@
         }
     }
 
-    // Function to sanitize strings to prevent injection issues
-    function sanitize(str) {
-        if (!str) return "";
-        return str.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-    }
+    // Function to inject buttons into posts
+    function injectButtons() {
+        // Define selectors to identify post containers
+        const postSelectors = [
+            'div.occludable-update'       // Outermost LinkedIn post container
+            // Removed 'div.feed-shared-update-v2' to prevent duplicate injections
+        ];
 
-    // Function to find content using selectors
-    function findElementContent(container, selectors, type, postIndex) {
-        for (const selector of selectors) {
-            try {
-                const element = container.querySelector(selector);
-                if (element) {
-                    const content = element.textContent.trim();
-                    if (content) {
-                        return content;
-                    }
+        postSelectors.forEach(selector => {
+            const posts = document.querySelectorAll(selector);
+            posts.forEach(post => {
+                const postId = post.getAttribute('data-urn') || 'unknown-post';
+                debugLog(`Processing Post ID: ${postId}`);
+
+                // Avoid injecting multiple buttons by checking a data attribute
+                if (post.getAttribute('data-comment-button-injected') === 'true') {
+                    debugLog(`Post ID: ${postId} already has a Generate Comment button.`);
+                    return;
                 }
-            } catch (error) {
-                debugError(`Error with selector "${selector}" for ${type} in post ${postIndex + 1}:`, error);
-            }
-        }
-        return null;
+
+                // Create the button
+                const button = document.createElement('button');
+                button.innerText = 'Generate Comment';
+                button.className = 'generate-comment-btn';
+                // Apply styles via CSS classes instead of inline styles for better maintainability
+                button.style.marginTop = '10px';
+                button.style.padding = '5px 10px';
+                button.style.backgroundColor = '#0073b1';
+                button.style.color = '#fff';
+                button.style.border = 'none';
+                button.style.borderRadius = '4px';
+                button.style.cursor = 'pointer';
+
+                // Append the button to the post
+                post.appendChild(button);
+
+                // Add click event listener
+                button.addEventListener('click', () => {
+                    handleGenerateComment(post);
+                });
+
+                // Mark this post as having the button injected
+                post.setAttribute('data-comment-button-injected', 'true');
+
+                debugLog(`Injected Generate Comment button into Post ID: ${postId}`);
+            });
+        });
     }
 
-    // Function to clean up post content
-    function cleanUpPostContent(text) {
-        if (!text) return "";
-        const tempElement = document.createElement('div');
-        tempElement.innerHTML = text.replace(/\s+/g, ' ').trim();
-        return tempElement.textContent || "";
-    }
+    // Function to handle button clicks
+    function handleGenerateComment(post) {
+        // Extract post identifier or content if needed
+        const postId = post.getAttribute('data-urn') || 'unknown-post';
 
-    // Function to remove poster's name from content
-    function removeNameFromContent(content, name) {
-        if (!content || !name) return content;
+        // Adjust these selectors as per your inspection
+        const postContentElement = post.querySelector('div.feed-shared-update-v2__description-wrapper, div.ember-view span.break-words');
+        const postContent = postContentElement ? postContentElement.innerText.trim() : 'No content available';
 
-        const sanitizedName = sanitize(name);
-        const regex = new RegExp(`^${sanitizedName}\\s*`, 'i');
-        return content.replace(regex, '').trim();
-    }
+        // Extract poster's name
+        const posterNameElement = post.querySelector('span.feed-shared-actor__name, a.feed-shared-actor__name-link, span.actor-name');
+        const posterName = posterNameElement ? posterNameElement.innerText.trim() : 'Unknown User';
 
-    // Set to track processed posts
-    const processedPostIds = new Set();
+        debugLog(`Generate Comment clicked for Post ID: ${postId}, Poster: ${posterName}`);
+        debugLog(`Post Content: ${postContent}`);
 
-    // Function to extract data from a post element
-    function extractPostData(postContainer, index) {
-        const nameSelectors = [
-            'span.update-components-actor__name',
-            'span.feed-shared-actor__name',
-            'span.update-components-actor__title',
-            'a.update-components-actor__meta-link',
-            'a[data-control-name="actor_container"] span',
-            'div.update-components-actor__meta-link',
-            '.actor-name',
-            'div.feed-shared-actor__title span'
-        ];
-
-        const contentSelectors = [
-            'div.feed-shared-update-v2__description-wrapper',
-            'div.feed-shared-text-view',
-            'div.update-components-text',
-            'div.feed-shared-text',
-            'div.update-components-text__text-view',
-            'div.feed-shared-update-v2__commentary',
-            'span[dir="ltr"]',
-            'div.feed-shared-inline-show-more-text'
-        ];
-
-        let posterName = findElementContent(postContainer, nameSelectors, 'name', index) || "Unknown User";
-        let postContent = findElementContent(postContainer, contentSelectors, 'content', index) || "Content not available";
-
-        if (postContent) {
-            postContent = cleanUpPostContent(postContent);
-            postContent = removeNameFromContent(postContent, posterName);
+        // Disable the button to prevent multiple clicks
+        const button = post.querySelector('.generate-comment-btn');
+        if (button) {
+            button.disabled = true;
+            button.innerText = 'Generating...';
         }
 
-        // Attempt to extract a unique identifier from the post container
-        let uniqueId = postContainer.getAttribute('data-urn') || `${sanitize(posterName)}-${sanitize(postContent.substring(0, 50))}`;
-
-        return {
-            posterName: posterName,
+        // Send message to background script to generate comment
+        chrome.runtime.sendMessage({
+            action: 'generateComment',
+            postId: postId,
             postContent: postContent,
-            uniqueId: uniqueId,
-            isValid: Boolean(posterName && postContent && postContent !== "Content not available")
-        };
-    }
+            posterName: posterName
+        }, (response) => {
+            // Re-enable the button
+            if (button) {
+                button.disabled = false;
+                button.innerText = 'Generate Comment';
+            }
 
-    // Function to get LinkedIn posts
-    function getLinkedInPosts() {
-        const posts = [];
-        const postContainers = document.querySelectorAll([
-            'div.feed-shared-update-v2',
-            'div.occludable-update',
-            'div[data-urn]',
-            'div.feed-shared-update-v2__content',
-            'div.update-components-actor',
-            'div.feed-shared-actor'
-        ].join(', '));
+            if (chrome.runtime.lastError) {
+                debugError('Runtime error:', chrome.runtime.lastError);
+                alert('Failed to generate comment. Please try again.');
+                return;
+            }
 
-        postContainers.forEach((postContainer, index) => {
-            try {
-                const postData = extractPostData(postContainer, index);
-                if (postData.isValid && !processedPostIds.has(postData.uniqueId)) {
-                    posts.push({
-                        posterName: postData.posterName,
-                        postContent: postData.postContent,
-                        timestamp: new Date().toISOString(),
-                        index: index
-                    });
-                    processedPostIds.add(postData.uniqueId);
-                }
-            } catch (error) {
-                debugError(`Error processing post ${index + 1}:`, error);
+            if (response && response.comment) {
+                debugLog('Received generated comment:', response.comment);
+                // Open a new window to display the comment
+                openCommentWindow(response.comment);
+            } else if (response && response.error) {
+                debugError('Error generating comment:', response.error);
+                alert(response.error);
+            } else {
+                debugError('No comment received in response.');
+                alert('Failed to generate comment. Please try again.');
             }
         });
-
-        return posts.filter(post => post.postContent && post.postContent !== "Content not available");
     }
 
-    // Initialization
-    function initializeContentScript() {
-        let lastKnownPosts = [];
-        let isProcessingScroll = false;
-        let isValid = true;
-        let isScrolling = false;
-        let port = null;
+    function openCommentWindow(comment) {
+        const width = 600; // Increased width
+        const height = 400; // Increased height
+        const left = (screen.width / 2) - (width / 2);
+        const top = (screen.height / 2) - (height / 2);
+    
+        // Encode the comment to include in URL
+        const encodedComment = encodeURIComponent(comment);
+        const windowURL = chrome.runtime.getURL(`window.html?comment=${encodedComment}`); // Ensure the path is correct
+    
+        // Create the window
+        const commentWindow = window.open(
+            windowURL,
+            `CommentWindow_${Date.now()}`,
+            `width=${width},height=${height},top=${top},left=${left}`
+        );
+    
+        if (!commentWindow) {
+            alert('Failed to open comment window. Please allow popups for this site.');
+        }
+    }
+    
 
-        // Utility function for debouncing
+
+    // Function to sanitize HTML to prevent XSS
+    function sanitizeHTML(str) {
+        const temp = document.createElement('div');
+        temp.textContent = str;
+        return temp.innerHTML;
+    }
+
+    // Setup MutationObserver to handle dynamically loaded posts
+    function setupMutationObserver() {
+        const targetNode = document.body;
+        const config = { childList: true, subtree: true };
+
+        // Debounce the injectButtons function to prevent rapid, repeated calls
         function debounce(func, wait) {
             let timeout;
             return function(...args) {
@@ -158,234 +172,26 @@
             };
         }
 
-        // Handle extension invalidation and cleanup
-        function handleExtensionInvalidation() {
-            if (!isValid) return; // Prevent multiple invalidations
-            isValid = false;
-            window.linkedInEnhancerInitialized = false;
+        const debouncedInjectButtons = debounce(injectButtons, 500);
 
-            // Remove scroll listener
-            window.removeEventListener('scroll', handleScrollDebounced);
-
-            // Disconnect port if it exists
-            if (port) {
-                try {
-                    port.disconnect();
-                    debugLog("Port disconnected during invalidation");
-                } catch (error) {
-                    debugError("Error disconnecting port:", error);
+        const callback = function(mutationsList) {
+            for (const mutation of mutationsList) {
+                if (mutation.type === 'childList' && mutation.addedNodes.length > 0) {
+                    debouncedInjectButtons(); // Use the debounced function
                 }
-                port = null;
             }
+        };
 
-            // Clear stored data
-            lastKnownPosts = [];
-            isProcessingScroll = false;
+        const observer = new MutationObserver(callback);
+        observer.observe(targetNode, config);
 
-            debugLog("Extension context invalidated, cleanup completed");
-        }
-
-        // Setup connection port
-        function setupConnectionPort() {
-            if (!isValid) return;
-
-            try {
-                port = chrome.runtime.connect({ name: "scroll-sync" });
-                debugLog("Port connected with name 'scroll-sync'");
-
-                port.onDisconnect.addListener(() => {
-                    if (chrome.runtime.lastError) {
-                        const error = chrome.runtime.lastError.message;
-                        if (error.includes('Extension context invalidated')) {
-                            handleExtensionInvalidation();
-                            return;
-                        }
-                    }
-                    debugLog("Content script port disconnected, attempting reconnection...");
-                    setTimeout(setupConnectionPort, 1000);
-                });
-
-                port.onMessage.addListener((message) => {
-                    // Handle incoming messages on the port if needed
-                    debugLog("Received message on port:", message);
-                    // Example: handleScrollSyncMessage(message);
-                });
-            } catch (error) {
-                if (error.message.includes('Extension context invalidated')) {
-                    handleExtensionInvalidation();
-                    return;
-                }
-                debugError("Content script port connection failed, retrying...", error);
-                setTimeout(setupConnectionPort, 1000);
-            }
-        }
-
-        setupConnectionPort();
-
-        debugLog("Content script loaded and running");
-
-        // Setup message listeners
-        function setupMessageListeners() {
-            if (!isValid) return;
-
-            chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-                if (!isValid) {
-                    sendResponse({ status: "invalid" });
-                    return;
-                }
-
-                if (request.action === "syncScroll" && request.source === "extension") {
-                    isScrolling = true;
-                    window.scrollTo({
-                        top: request.position,
-                        behavior: 'smooth'
-                    });
-                    setTimeout(() => {
-                        isScrolling = false;
-                    }, 100);
-                    sendResponse({ status: "success" });
-                }
-                return true; // Keep the message channel open for async response
-            });
-        }
-
-        setupMessageListeners();
-
-        // Debounced scroll handler
-        const handleScrollDebounced = debounce(handleScroll, 250);
-        window.addEventListener('scroll', handleScrollDebounced);
-
-        // Cleanup on window unload
-        window.addEventListener('unload', handleExtensionInvalidation);
-
-        async function handleScroll() {
-            if (!window.linkedInEnhancerInitialized || !isValid || isProcessingScroll || isScrolling) {
-                return;
-            }
-
-            isProcessingScroll = true;
-
-            try {
-                // Check extension context before proceeding
-                if (!chrome.runtime?.id) {
-                    handleExtensionInvalidation();
-                    return;
-                }
-
-                const visiblePosts = getVisiblePosts(); // Or use getLinkedInPosts()
-
-                if (!arePostsEqual(visiblePosts, lastKnownPosts)) {
-                    lastKnownPosts = visiblePosts;
-
-                    await chrome.runtime.sendMessage({
-                        action: "updateVisiblePosts",
-                        posts: visiblePosts,
-                        timestamp: new Date().toISOString()
-                    });
-                }
-            } catch (error) {
-                if (error.message && error.message.includes('Extension context invalidated')) {
-                    handleExtensionInvalidation();
-                }
-                debugError('Scroll handling error:', error);
-            } finally {
-                isProcessingScroll = false;
-            }
-        }
-
-        // Utility to compare posts
-        function arePostsEqual(posts1, posts2) {
-            if (posts1.length !== posts2.length) return false;
-            return posts1.every((post, index) => {
-                const other = posts2[index];
-                return post.posterName === other.posterName &&
-                       post.postContent === other.postContent &&
-                       post.position === other.position;
-            });
-        }
-
-        // Setup MutationObserver to monitor dynamic content changes
-        function setupMutationObserver() {
-            // Update the selector based on LinkedIn's current DOM structure
-            const targetNode = document.querySelector('div.scaffold-layout__main'); // Example selector; adjust as needed
-            if (!targetNode) {
-                debugError("Target node for MutationObserver not found.");
-                return;
-            }
-
-            const config = { childList: true, subtree: true };
-
-            let mutationTimeout = null;
-            const debounceTime = 500; // Adjust as needed
-
-            const callback = function(mutationsList, observer) {
-                if (mutationTimeout) return; // Throttle the processing
-
-                mutationTimeout = setTimeout(() => {
-                    mutationTimeout = null;
-
-                    // Process all mutations that occurred within the delay period
-                    debugLog("Processing batched mutations.");
-
-                    const newPosts = getLinkedInPosts();
-
-                    const freshPosts = newPosts.filter(post => {
-                        if (processedPostIds.has(post.uniqueId)) {
-                            return false;
-                        } else {
-                            processedPostIds.add(post.uniqueId);
-                            return true;
-                        }
-                    });
-
-                    if (freshPosts.length > 0) {
-                        chrome.runtime.sendMessage({
-                            action: "updateVisiblePosts",
-                            posts: freshPosts,
-                            timestamp: new Date().toISOString()
-                        }).then(response => {
-                            debugLog("Sent new posts to background:", response);
-                        }).catch(error => {
-                            debugError("Failed to send new posts to background:", error);
-                        });
-                    }
-                }, debounceTime);
-            };
-
-            const observer = new MutationObserver(callback);
-            observer.observe(targetNode, config);
-
-            debugLog("MutationObserver set up successfully.");
-        }
-
-        setupMutationObserver();
+        debugLog('MutationObserver set up successfully.');
     }
 
-    // Function to listen for getPostContent messages
-    chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
-        if (request.action === "getPostContent") {
-            try {
-                const postContent = getLinkedInPosts();
-                sendResponse({ 
-                    posts: postContent,
-                    debug: {
-                        totalPostsFound: postContent.length,
-                        timestamp: new Date().toISOString()
-                    }
-                });
-            } catch (error) {
-                debugError("Error getting posts:", error);
-                sendResponse({ 
-                    posts: [], 
-                    error: error.message,
-                    debug: {
-                        errorStack: error.stack,
-                        timestamp: new Date().toISOString()
-                    }
-                });
-            }
-            return true; // Keep the message channel open for async response
-        }
-    });
+    // Initial injection of buttons
+    injectButtons();
+
+    // Set up MutationObserver for dynamic content
+    setupMutationObserver();
 
 })();
