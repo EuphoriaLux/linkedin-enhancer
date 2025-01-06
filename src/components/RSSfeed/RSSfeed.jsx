@@ -1,6 +1,6 @@
 // src/components/RSSfeed/RSSfeed.jsx
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import ReactDOM from 'react-dom';
 import { FaTrash, FaPlus } from 'react-icons/fa';
 import './RSSfeed.css';
@@ -11,6 +11,7 @@ const RSSfeed = () => {
   const [rssFeeds, setRssFeeds] = useState([]);
   const [newFeedUrl, setNewFeedUrl] = useState('');
   const [rssStatus, setRssStatus] = useState({ message: '', type: '' });
+  const iframeRef = useRef(null);
 
   // Load RSS feeds from chrome.storage on component mount
   useEffect(() => {
@@ -25,8 +26,52 @@ const RSSfeed = () => {
     });
   }, []);
 
-  // Function to add a new RSS feed by fetching its title and image via background script
-  const addRssFeed = async () => {
+  // Setup message listener
+  useEffect(() => {
+    const messageHandler = (event) => {
+      // Ensure the message is coming from the fetcher iframe
+      if (event.source !== iframeRef.current.contentWindow) {
+        return;
+      }
+
+      const { action, feed, error } = event.data;
+
+      if (action === 'rssFeedData' && feed) {
+        const feedTitle = feed.title || 'No Title';
+        const feedImage = feed.image || PLACEHOLDER_FEED_IMAGE;
+
+        // Add new feed object
+        const newFeed = {
+          url: newFeedUrl,
+          title: feedTitle,
+          image: feedImage,
+        };
+
+        const updatedFeeds = [...rssFeeds, newFeed];
+        setRssFeeds(updatedFeeds);
+        setNewFeedUrl('');
+        setRssStatus({ message: 'RSS feed added successfully!', type: 'success' });
+        console.log('RSS Feed Added:', newFeed);
+
+        // Save updated feeds to chrome.storage
+        chrome.storage.sync.set({ rssFeeds: updatedFeeds }, () => {
+          console.log('RSS Feeds Saved to chrome.storage');
+        });
+      } else if (action === 'rssFeedError' && error) {
+        setRssStatus({ message: `Failed to fetch RSS feed. Error: ${error}`, type: 'error' });
+        console.error('Add RSS Feed Error:', error);
+      }
+    };
+
+    window.addEventListener('message', messageHandler);
+
+    return () => {
+      window.removeEventListener('message', messageHandler);
+    };
+  }, [rssFeeds, newFeedUrl]);
+
+  // Function to add a new RSS feed by fetching its title and image via fetcher iframe
+  const addRssFeed = () => {
     if (newFeedUrl.trim() === '') {
       setRssStatus({ message: 'Please enter the RSS feed URL.', type: 'error' });
       console.error('Add RSS Feed Error: Missing URL.');
@@ -50,44 +95,13 @@ const RSSfeed = () => {
       return;
     }
 
-    // Fetch feed details using background script
-    try {
-      chrome.runtime.sendMessage(
-        {
-          action: 'fetchRSSFeed',
-          feedUrl: newFeedUrl,
-        },
-        (response) => {
-          if (response && response.feed) {
-            const feedTitle = response.feed.title || 'No Title';
-            const feedImage = response.feed.image || PLACEHOLDER_FEED_IMAGE;
-
-            // Add new feed object
-            const feed = {
-              url: newFeedUrl,
-              title: feedTitle,
-              image: feedImage,
-            };
-
-            const updatedFeeds = [...rssFeeds, feed];
-            setRssFeeds(updatedFeeds);
-            setNewFeedUrl('');
-            setRssStatus({ message: 'RSS feed added successfully!', type: 'success' });
-            console.log('RSS Feed Added:', feed);
-
-            // Save updated feeds to chrome.storage
-            chrome.storage.sync.set({ rssFeeds: updatedFeeds }, () => {
-              console.log('RSS Feeds Saved to chrome.storage');
-            });
-          } else if (response && response.error) {
-            setRssStatus({ message: 'Failed to fetch feed details. Please check the URL.', type: 'error' });
-            console.error('Add RSS Feed Error:', response.error);
-          }
-        }
+    // Send message to fetcher iframe to fetch the RSS feed
+    if (iframeRef.current) {
+      iframeRef.current.contentWindow.postMessage(
+        { action: 'fetchRSSFeed', feedUrl: newFeedUrl },
+        window.location.origin // Updated to use window.location.origin
       );
-    } catch (error) {
-      setRssStatus({ message: 'An error occurred while fetching the RSS feed.', type: 'error' });
-      console.error('Add RSS Feed Error:', error);
+      setRssStatus({ message: 'Fetching RSS feed...', type: 'info' });
     }
   };
 
@@ -166,6 +180,13 @@ const RSSfeed = () => {
           Back to General Settings
         </a>
       </div>
+      {/* Hidden Fetcher Iframe */}
+      <iframe
+        ref={iframeRef}
+        src={chrome.runtime.getURL('components/RSSfeed/fetcher.html')}
+        style={{ display: 'none' }}
+        title="RSS Fetcher"
+      ></iframe>
     </div>
   );
 };

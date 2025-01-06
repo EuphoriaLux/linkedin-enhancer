@@ -42,16 +42,21 @@ module.exports = {
   },
   resolve: {
     extensions: ['.js', '.jsx'], // Resolves these extensions
+    alias: {
+      Services: path.resolve(__dirname, 'src/services/') // Add alias for services
+    }
   },
   plugins: [
     new CleanWebpackPlugin(), // Cleans the dist folder before each build
     new MiniCssExtractPlugin({
-      filename: '[name].bundle.css', // Unique CSS filename per entry
+      filename: '[name].bundle.css' // Unique CSS filename per entry
     }),
     new CopyWebpackPlugin({
       patterns: [
         { from: 'src/manifest.json', to: '.' }, // Copies manifest.json to dist/
         { from: 'src/assets/images/', to: 'assets/images/' }, // Copies images
+        { from: 'src/components/RSSfeed/fetcher.html', to: 'components/RSSfeed/' },
+        { from: 'src/components/RSSfeed/fetcher.js', to: 'components/RSSfeed/' }
       ],
     }),
     new HtmlWebpackPlugin({

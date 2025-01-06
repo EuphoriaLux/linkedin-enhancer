@@ -1,194 +1,73 @@
 /* src/components/Options/Options.css */
 
 .options-container {
-  font-family: var(--font-family);
-  padding: 30px 25px;
-  max-width: 800px;
+  padding: 20px;
+  font-family: Arial, sans-serif;
+  max-width: 600px;
   margin: 0 auto;
-  background-color: #ffffff;
-  border-radius: 8px;
-  box-shadow: var(--box-shadow);
-}
-
-.options-container h1 {
-  font-size: 32px;
-  margin-bottom: 30px;
-  text-align: center;
-  color: var(--primary-color);
 }
 
 .section {
-  margin-bottom: 30px;
-}
-
-.section h3 {
-  font-size: 24px;
-  margin-bottom: 15px;
-  color: var(--text-color);
-}
-
-.form-group {
   margin-bottom: 20px;
 }
 
-.form-group label {
+.section label {
   display: block;
-  font-weight: 600;
-  margin-bottom: 8px;
-  color: var(--text-color);
-}
-
-.form-group input[type="text"],
-.form-group textarea,
-.form-group select,
-.form-group input[type="number"] {
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid var(--border-color);
-  border-radius: var(--button-radius);
-  font-size: 16px;
-  transition: border-color var(--transition-speed), box-shadow var(--transition-speed);
-  background-color: #fdfdfd;
-}
-
-.form-group input[type="text"]:focus,
-.form-group textarea:focus,
-.form-group select:focus,
-.form-group input[type="number"]:focus {
-  border-color: var(--primary-color);
-  outline: none;
-  box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
-}
-
-.range-container {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-}
-
-.range-value {
-  width: 40px;
-  text-align: center;
   font-weight: bold;
+  margin-bottom: 5px;
 }
 
-.rss-feed-management {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 10px;
-  align-items: center;
+.section input[type="text"],
+.section input[type="number"],
+.section textarea,
+.section select {
+  width: 100%;
+  padding: 8px;
+  box-sizing: border-box;
+  border: 1px solid #ccc;
+  border-radius: 4px;
 }
 
-.rss-feed-management input[type="text"] {
-  flex: 1;
-  min-width: 200px;
+.section small {
+  display: block;
+  margin-top: 5px;
+  color: #555;
 }
 
 .button {
-  padding: 10px 16px;
+  padding: 10px 20px;
   border: none;
-  border-radius: var(--button-radius);
+  border-radius: 4px;
   cursor: pointer;
   font-size: 16px;
-  transition: background-color var(--transition-speed), transform var(--transition-speed);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .button-primary {
-  background-color: var(--primary-color);
-  color: #ffffff;
+  background-color: #007bff;
+  color: white;
 }
 
 .button-primary:hover {
-  background-color: var(--primary-color-dark);
-  transform: translateY(-2px);
+  background-color: #0069d9;
 }
 
-.button-secondary {
-  background-color: var(--secondary-color);
-  color: #ffffff;
-}
-
-.button-secondary:hover {
-  background-color: var(--secondary-color-dark);
-  transform: translateY(-2px);
-}
-
-.button .icon {
-  margin-right: 8px;
-}
-
-.rss-feed-list {
-  list-style: none;
-  padding: 0;
-}
-
-.rss-feed-list li {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 10px 12px;
-  background-color: #f1f1f1;
+.status {
+  padding: 10px;
   border-radius: 4px;
-  margin-bottom: 8px;
+  font-weight: bold;
 }
 
-.rss-feed-list li .feed-info {
-  display: flex;
-  align-items: center;
+.status.success {
+  background-color: #d4edda;
+  color: #155724;
 }
 
-.rss-feed-list li .feed-image {
-  width: 40px;
-  height: 40px;
-  object-fit: cover;
-  border-radius: 50%;
-  margin-right: 15px;
-  border: 1px solid var(--border-color);
+.status.error {
+  background-color: #f8d7da;
+  color: #721c24;
 }
 
-.rss-feed-list li .feed-title {
-  font-size: 16px;
-  color: var(--text-color);
-}
-
-.remove-button {
-  background: none;
-  border: none;
-  color: red;
-  cursor: pointer;
-  font-size: 16px;
-}
-
-.rss-status {
-  margin-top: 10px;
-  font-size: 14px;
-}
-
-.rss-status.success {
-  color: green;
-}
-
-.rss-status.error {
-  color: red;
-}
-
-/* Responsive Styles */
-@media (max-width: 768px) {
-  .rss-feed-management {
-    flex-direction: column;
-    align-items: stretch;
-  }
-
-  .rss-feed-list li {
-    flex-direction: column;
-    align-items: flex-start;
-  }
-
-  .remove-button {
-    align-self: flex-end;
-    margin-top: 10px;
-  }
+.status.info {
+  background-color: #cce5ff;
+  color: #004085;
 }
