@@ -154,6 +154,7 @@ export class APIService {
      * Generates a LinkedIn Comment based on the post content.
      * @param {string} postContent - The content of the LinkedIn post.
      * @param {string} posterName - The name of the post's author.
+     * @param {string} websiteURL - The source website URL.
      * @returns {Promise<string>} The generated comment.
      */
     static async generateComment(postContent, posterName) {
@@ -179,6 +180,7 @@ export class APIService {
                 ? settings.defaultCommentPrompt
                     .replace('{postContent}', postContent)
                     .replace('{name}', posterName)
+                    .replace('{website}', websiteURL)
                 : `Write a thoughtful and engaging LinkedIn comment for a post by ${posterName}. The post content is: "${postContent}"`;
 
             console.log('🔹 Final Prompt for generateComment:', prompt);
