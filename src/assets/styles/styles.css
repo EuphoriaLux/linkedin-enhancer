@@ -1,191 +1,23 @@
 /* src/assets/styles/styles.css */
 
-/* CSS Variables for Consistent Styling */
 :root {
-    --primary-color: #0073b1;
-    --primary-hover: #005582;
-    --secondary-color: #4CAF50;
-    --secondary-hover: #45a049;
-    --success-color: #28a745;
-    --success-hover: #218838;
-    --error-color: #dc3545;
-    --error-hover: #c82333;
-    --background-color: #f9f9f9;
-    --text-color: #333;
-    --border-color: #ddd;
-    --font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-    --button-radius: 4px;
-    --transition-speed: 0.3s;
-    --box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    --spinner-border: #f3f3f3;
-    --spinner-top: #fff;
+  --primary-color: #1DA1F2; /* LinkedIn Blue or your desired primary color */
+  --primary-hover: #0d8ddb; /* Darker shade for hover */
+  --secondary-color: #17bf63; /* Secondary color */
+  --secondary-hover: #138b50; /* Darker shade for hover */
+  --success-color: #28a745;
+  --error-color: #dc3545;
+  --warning-color: #ffc107;
+  --info-color: #17a2b8;
+  --background-color: #f3f4f6;
+  --text-color: #1f2937;
+  --border-color: #d1d5db;
+  --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  --font-family: 'Inter', sans-serif; /* Example Font */
+  --transition-speed: 0.3s;
 }
 
-/* Reset and Base Styles */
-*,
-*::before,
-*::after {
-    margin: 0;
-    padding: 0;
-    box-sizing: border-box;
-}
-
-body {
-    font-family: var(--font-family);
-    background-color: var(--background-color);
-    color: var(--text-color);
-    line-height: 1.6;
-}
-
-/* Utility Classes */
-.text-center {
-    text-align: center;
-}
-
-.flex {
-    display: flex;
-}
-
-.flex-column {
-    flex-direction: column;
-}
-
-.align-center {
-    align-items: center;
-}
-
-.justify-center {
-    justify-content: center;
-}
-
-.gap-10 {
-    gap: 10px;
-}
-
-.gap-20 {
-    gap: 20px;
-}
-
-.m-0 {
-    margin: 0;
-}
-
-.p-0 {
-    padding: 0;
-}
-
-/* Button Styles */
-.button {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    padding: 10px 16px;
-    font-size: 16px;
-    border: none;
-    border-radius: var(--button-radius);
-    cursor: pointer;
-    transition: background-color var(--transition-speed), opacity var(--transition-speed);
-    box-shadow: var(--box-shadow);
-    text-decoration: none;
-    font-family: inherit;
-}
-
-.button:disabled {
-    opacity: 0.6;
-    cursor: not-allowed;
-}
-
-/* Button Variants */
-.button--primary {
-    background-color: var(--primary-color);
-    color: #ffffff;
-}
-
-.button--primary:hover {
-    background-color: var(--primary-hover);
-}
-
-.button--secondary {
-    background-color: var(--secondary-color);
-    color: #ffffff;
-}
-
-.button--secondary:hover {
-    background-color: var(--secondary-hover);
-}
-
-.button--success {
-    background-color: var(--success-color);
-    color: #ffffff;
-}
-
-.button--success:hover {
-    background-color: var(--success-hover);
-}
-
-.button--error {
-    background-color: var(--error-color);
-    color: #ffffff;
-}
-
-.button--error:hover {
-    background-color: var(--error-hover);
-}
-
-/* Copy Button Styles */
-.button--copy {
-    padding: 10px 20px;
-    font-size: 14px;
-    background-color: var(--secondary-color);
-    color: #ffffff;
-    border-radius: 5px;
-    transition: background-color var(--transition-speed);
-}
-
-.button--copy:hover {
-    background-color: var(--secondary-hover);
-}
-
-/* Icon Styles */
-.icon {
-    margin-right: 8px;
-    font-size: 1.2em;
-}
-
-.icon--success {
-    color: var(--success-color);
-}
-
-.icon--error {
-    color: var(--error-color);
-}
-
-/* Feedback Message Styles */
-.feedback-message {
-    margin-top: 10px;
-    font-weight: bold;
-}
-
-.feedback-message--success {
-    color: var(--success-color);
-}
-
-.feedback-message--error {
-    color: var(--error-color);
-}
-
-/* Spinner Animation */
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-.spinner {
-    border: 4px solid var(--spinner-border);
-    border-top: 4px solid var(--spinner-top);
-    border-radius: 50%;
-    width: 14px;
-    height: 14px;
-    animation: spin 1s linear infinite;
-    margin-left: 5px;
-}
+/* Import Tailwind base styles */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

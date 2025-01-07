@@ -4,7 +4,9 @@ const path = require('path');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 const { CleanWebpackPlugin } = require('clean-webpack-plugin');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
-const MiniCssExtractPlugin = require('mini-css-extract-plugin'); // Ensure this is imported
+const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const webpack = require('webpack');
+const NodePolyfillPlugin = require('node-polyfill-webpack-plugin'); // Import the plugin
 
 module.exports = {
   entry: {
@@ -15,11 +17,10 @@ module.exports = {
     window: './src/components/Window/Window.jsx',
     background: './src/background/background.js',
     content: './src/content_scripts/content.js',
-    global: './src/assets/styles/styles.css', 
   },
   output: {
     path: path.resolve(__dirname, 'dist'),
-    filename: '[name].bundle.js' // Ensures unique JS filenames per entry
+    filename: '[name].bundle.js', // Ensures unique JS filenames per entry
   },
   module: {
     rules: [
@@ -27,12 +28,16 @@ module.exports = {
         test: /\.jsx?$/, // Handles both .js and .jsx files
         exclude: /node_modules/,
         use: {
-          loader: 'babel-loader'
-        }
+          loader: 'babel-loader',
+        },
       },
       {
         test: /\.css$/i, // Handles CSS files
-        use: [MiniCssExtractPlugin.loader, 'css-loader'], // Extract CSS into separate files
+        use: [
+          MiniCssExtractPlugin.loader,
+          'css-loader',
+          'postcss-loader', // Add postcss-loader here
+        ],
       },
       {
         test: /\.(png|svg|jpg|jpeg|gif)$/i, // Handles image assets
@@ -45,19 +50,30 @@ module.exports = {
     alias: {
       Services: path.resolve(__dirname, 'src/services/'), // Existing alias
       Utils: path.resolve(__dirname, 'src/utils/'), // New alias
+      Assets: path.resolve(__dirname, 'src/assets/'), // Added alias
+    },
+    fallback: {
+      // These fallbacks are now handled by NodePolyfillPlugin, so you can omit them or keep them for explicitness
+      "stream": require.resolve("stream-browserify"),
+      "http": require.resolve("stream-http"),
+      "https": require.resolve("https-browserify"),
+      "url": require.resolve("url/"),
+      "string_decoder": require.resolve("string_decoder/"),
+      "timers": require.resolve("timers-browserify"),
+      "buffer": require.resolve("buffer/"),
+      "process": require.resolve("process/browser"),
     },
   },
   plugins: [
     new CleanWebpackPlugin(), // Cleans the dist folder before each build
     new MiniCssExtractPlugin({
-      filename: '[name].bundle.css' // Unique CSS filename per entry
+      filename: '[name].bundle.css', // Unique CSS filename per entry
     }),
     new CopyWebpackPlugin({
       patterns: [
         { from: 'src/manifest.json', to: '.' }, // Copies manifest.json to dist/
         { from: 'src/assets/images/', to: 'assets/images/' }, // Copies images
-        { from: 'src/components/RSSfeed/fetcher.html', to: 'components/RSSfeed/' },
-        { from: 'src/components/RSSfeed/fetcher.js', to: 'components/RSSfeed/' }
+        // Removed fetcher.html and fetcher.js as they are no longer needed
       ],
     }),
     new HtmlWebpackPlugin({
@@ -85,7 +101,19 @@ module.exports = {
       filename: 'window.html',
       chunks: ['window'], // Includes only the window bundle
     }),
+    // ProvidePlugin to supply global variables for polyfills
+    new webpack.ProvidePlugin({
+      process: 'process/browser',
+      Buffer: ['buffer', 'Buffer'],
+    }),
+    new NodePolyfillPlugin(), // Adds polyfills for Node.js core modules
   ],
+  target: ['web', 'es5'], // Ensures compatibility with older browsers if needed
+  node: {
+    global: true,
+    __dirname: false,
+    __filename: false,
+  },
   mode: 'production', // Sets Webpack to production mode for optimizations
   devtool: 'source-map', // Generates source maps for debugging
 };

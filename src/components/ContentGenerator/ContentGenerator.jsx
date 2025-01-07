@@ -1,10 +1,12 @@
 // src/components/ContentGenerator/ContentGenerator.jsx
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { FaCopy, FaLinkedin } from 'react-icons/fa';
-import './ContentGenerator.css';
+import { FaCopy, FaLinkedin, FaSpinner, FaSearch } from 'react-icons/fa';
+import classNames from 'classnames'; // Ensure classnames is installed
 import { extractArticleContent } from '../../Utils/contentExtractor.js';
+import 'Assets/styles/styles.css'; // Using Webpack alias
+
 
 const PLACEHOLDER_FEED_IMAGE = 'https://via.placeholder.com/150?text=No+Image';
 const PLACEHOLDER_ARTICLE_IMAGE = 'https://via.placeholder.com/150?text=No+Image';
@@ -16,7 +18,9 @@ const ContentGenerator = () => {
   const [selectedArticle, setSelectedArticle] = useState(null);
   const [generatedContent, setGeneratedContent] = useState('');
   const [status, setStatus] = useState({ message: '', type: '' });
-  const iframeRef = useRef(null);
+  const [isLoading, setIsLoading] = useState(false);
+  const [feedSearchTerm, setFeedSearchTerm] = useState('');
+  const [articleSearchTerm, setArticleSearchTerm] = useState('');
 
   // Fetch RSS Feeds on mount
   useEffect(() => {
@@ -47,25 +51,18 @@ const ContentGenerator = () => {
   }, [selectedFeed]);
 
   const fetchRSSFeedArticles = (feedUrl) => {
-    if (iframeRef.current) {
-      console.log('🔄 Fetching RSS Feed:', feedUrl);
-      iframeRef.current.contentWindow.postMessage(
-        { action: 'fetchRSSFeed', feedUrl },
-        window.location.origin
-      );
-    } else {
-      console.error('❌ Iframe reference is not set.');
-    }
-  };
+    setIsLoading(true);
+    chrome.runtime.sendMessage(
+      { action: 'fetchRSSFeed', feedUrl },
+      (response) => {
+        if (response.error) {
+          console.error('❌ RSS Feed Error:', response.error);
+          setStatus({ message: `Failed to fetch RSS feed. Error: ${response.error}`, type: 'error' });
+          setIsLoading(false);
+          return;
+        }
 
-  // Listen for messages from the iframe
-  useEffect(() => {
-    const messageHandler = (event) => {
-      if (!iframeRef.current || event.source !== iframeRef.current.contentWindow) return;
-
-      const { action, feed, error } = event.data;
-
-      if (action === 'rssFeedData' && feed) {
+        const feed = response.feed;
         console.log('📥 RSS Feed Data Received:', feed);
         if (feed.items && feed.items.length > 0) {
           setArticles(feed.items);
@@ -75,15 +72,10 @@ const ContentGenerator = () => {
           setStatus({ message: 'No articles found in this feed.', type: 'warning' });
           setArticles([]);
         }
-      } else if (action === 'rssFeedError') {
-        console.error('❌ RSS Feed Error:', error);
-        setStatus({ message: `Failed to fetch RSS feed. Error: ${error}`, type: 'error' });
+        setIsLoading(false);
       }
-    };
-
-    window.addEventListener('message', messageHandler);
-    return () => window.removeEventListener('message', messageHandler);
-  }, []);
+    );
+  };
 
   // Fetch website content
   const fetchWebsiteContent = async (url) => {
@@ -101,6 +93,7 @@ const ContentGenerator = () => {
       return cleanContent.substring(0, 2000);
     } catch (error) {
       console.error('❌ Error fetching website content:', error);
+      setStatus({ message: 'Content extraction failed.', type: 'error' });
       return 'Content extraction failed.';
     }
   };
@@ -116,6 +109,7 @@ const ContentGenerator = () => {
     const articleContent = selectedArticle.description || selectedArticle.title || '';
 
     setStatus({ message: 'Generating post...', type: 'info' });
+    setIsLoading(true);
 
     const extractedWebsiteContent = await fetchWebsiteContent(selectedArticle.link);
 
@@ -128,6 +122,7 @@ const ContentGenerator = () => {
         websiteURL: selectedArticle.link,
       },
       (response) => {
+        setIsLoading(false);
         if (chrome.runtime.lastError) {
           setStatus({ message: 'Failed to generate post.', type: 'error' });
           console.error('❌ Generate Post Error:', chrome.runtime.lastError.message);
@@ -163,171 +158,239 @@ const ContentGenerator = () => {
     window.open('https://www.linkedin.com/', '_blank');
   };
 
+  // Filtered Feeds based on search term
+  const filteredFeeds = rssFeeds.filter(feed =>
+    feed.title.toLowerCase().includes(feedSearchTerm.toLowerCase()) ||
+    (feed.description && feed.description.toLowerCase().includes(feedSearchTerm.toLowerCase()))
+  );
+
+  // Filtered Articles based on search term
+  const filteredArticles = articles.filter(article =>
+    article.title.toLowerCase().includes(articleSearchTerm.toLowerCase()) ||
+    (article.description && article.description.toLowerCase().includes(articleSearchTerm.toLowerCase()))
+  );
+
   return (
-    <div className="content-generator">
-      <div className="content-generator__header">
-        <h1>Content Generator</h1>
+    <div className="p-6 font-sans bg-gray-100 min-h-screen rounded-lg shadow-lg">
+      {/* Header */}
+      <div className="text-center mb-8">
+        <h1 className="text-3xl font-bold text-blue-600">Content Generator</h1>
+        <p className="text-gray-600 mt-2">Generate engaging LinkedIn posts effortlessly</p>
       </div>
 
+      {/* Status Message */}
       {status.message && (
         <div
-          className={`content-generator__status content-generator__status--${status.type}`}
+          className={classNames(
+            'mb-6 p-4 rounded flex items-center',
+            {
+              'bg-green-100 text-green-800': status.type === 'success',
+              'bg-red-100 text-red-800': status.type === 'error',
+              'bg-blue-100 text-blue-800': status.type === 'info',
+              'bg-yellow-100 text-yellow-800': status.type === 'warning',
+            }
+          )}
           aria-live="polite"
         >
-          {/* Optional: Add icons based on status type */}
-          {/* Example: <FaCheckCircle /> for success */}
-          {status.message}
+          {/* Dynamic Icon Based on Status Type */}
+          {status.type === 'success' && <FaCopy className="mr-2 text-green-500" />}
+          {status.type === 'error' && <FaCopy className="mr-2 text-red-500" />}
+          {status.type === 'warning' && <FaCopy className="mr-2 text-yellow-500" />}
+          {status.type === 'info' && <FaCopy className="mr-2 text-blue-500" />}
+          <span>{status.message}</span>
         </div>
       )}
 
-      <div className="content-generator__main">
-        {/* RSS Feed Selection */}
-        <div className="content-generator__section">
-          <h3>Select RSS Feed</h3>
-          {rssFeeds.length > 0 ? (
-            <div className="content-generator__list">
-              {rssFeeds.map((feed, index) => (
-                <div
-                  key={index}
-                  className={`content-generator__item ${
-                    selectedFeed?.url === feed.url ? 'content-generator__item--selected' : ''
-                  }`}
-                  onClick={() => setSelectedFeed(feed)}
-                  role="button"
-                  tabIndex={0}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      setSelectedFeed(feed);
-                    }
-                  }}
-                >
-                  <img
-                    src={feed.image || PLACEHOLDER_FEED_IMAGE}
-                    alt={feed.title}
-                    className="content-generator__image"
-                    loading="lazy"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = PLACEHOLDER_FEED_IMAGE;
+      {/* Main Content */}
+      <div className="flex flex-wrap gap-8">
+        {/* Column 1: RSS Feed Selection */}
+        <div className="flex-1 min-w-[280px]">
+          <h3 className="text-xl font-semibold text-blue-600 mb-4">Select RSS Feed</h3>
+          {/* Search Bar for Feeds */}
+          <div className="relative mb-4">
+            <FaSearch className="absolute top-3 left-3 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search feeds..."
+              value={feedSearchTerm}
+              onChange={(e) => setFeedSearchTerm(e.target.value)}
+              className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
+              aria-label="Search RSS Feeds"
+            />
+          </div>
+          {isLoading && selectedFeed ? (
+            <div className="flex justify-center items-center">
+              <FaSpinner className="animate-spin text-blue-600 text-3xl" />
+            </div>
+          ) : rssFeeds.length > 0 ? (
+            <div className="flex flex-col gap-4 max-h-[500px] overflow-y-auto pr-2">
+              {filteredFeeds.length > 0 ? (
+                filteredFeeds.map((feed, index) => (
+                  <div
+                    key={index}
+                    className={classNames(
+                      'flex items-center p-4 bg-white rounded-md cursor-pointer transition duration-200 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-600',
+                      {
+                        'border-2 border-blue-600 bg-blue-50': selectedFeed?.url === feed.url,
+                      }
+                    )}
+                    onClick={() => setSelectedFeed(feed)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        setSelectedFeed(feed);
+                      }
                     }}
-                  />
-                  <div className="content-generator__title">{feed.title}</div>
-                </div>
-              ))}
+                  >
+                    <img
+                      src={feed.image || PLACEHOLDER_FEED_IMAGE}
+                      alt={feed.title}
+                      className="w-10 h-10 object-cover rounded-md mr-3 flex-shrink-0"
+                      loading="lazy"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = PLACEHOLDER_FEED_IMAGE;
+                      }}
+                    />
+                    <div className="flex-1 text-sm font-medium truncate">{feed.title}</div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-600">No feeds match your search.</p>
+              )}
             </div>
           ) : (
-            <p className="content-generator__no-selection">
-              No RSS feeds available. Please add some in the Options page.
-            </p>
+            <p className="text-gray-600">No RSS feeds available. Please add some in the Options page.</p>
           )}
         </div>
 
-        {/* Article Selection */}
-        <div className="content-generator__section">
-          <h3>Select Article</h3>
-          {articles.length > 0 ? (
-            <div className="content-generator__list">
-              {articles.map((article, index) => (
-                <div
-                  key={index}
-                  className={`content-generator__item ${
-                    selectedArticle?.link === article.link
-                      ? 'content-generator__item--selected'
-                      : ''
-                  }`}
-                  onClick={() => {
-                    setSelectedArticle(article);
-                    setGeneratedContent('');
-                  }}
-                  role="button"
-                  tabIndex={0}
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
+        {/* Column 2: Article Selection */}
+        <div className="flex-1 min-w-[280px]">
+          <h3 className="text-xl font-semibold text-blue-600 mb-4">Select Article</h3>
+          {/* Search Bar for Articles */}
+          <div className="relative mb-4">
+            <FaSearch className="absolute top-3 left-3 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Search articles..."
+              value={articleSearchTerm}
+              onChange={(e) => setArticleSearchTerm(e.target.value)}
+              className="pl-10 pr-4 py-2 w-full border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-600"
+              aria-label="Search Articles"
+            />
+          </div>
+          {isLoading && selectedFeed ? (
+            <div className="flex justify-center items-center">
+              <FaSpinner className="animate-spin text-blue-600 text-3xl" />
+            </div>
+          ) : articles.length > 0 ? (
+            <div className="flex flex-col gap-4 max-h-[500px] overflow-y-auto pr-2">
+              {filteredArticles.length > 0 ? (
+                filteredArticles.map((article, index) => (
+                  <div
+                    key={index}
+                    className={classNames(
+                      'flex items-center p-4 bg-white rounded-md cursor-pointer transition duration-200 hover:bg-blue-50 focus:outline-none focus:ring-2 focus:ring-blue-600',
+                      {
+                        'border-2 border-blue-600 bg-blue-50': selectedArticle?.link === article.link,
+                      }
+                    )}
+                    onClick={() => {
                       setSelectedArticle(article);
                       setGeneratedContent('');
-                    }
-                  }}
-                >
-                  <img
-                    src={article.image || PLACEHOLDER_ARTICLE_IMAGE}
-                    alt={article.title}
-                    className="content-generator__image"
-                    loading="lazy"
-                    onError={(e) => {
-                      e.target.onerror = null;
-                      e.target.src = PLACEHOLDER_ARTICLE_IMAGE;
                     }}
-                  />
-                  <div className="content-generator__title">{article.title}</div>
-                </div>
-              ))}
+                    role="button"
+                    tabIndex={0}
+                    onKeyPress={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        setSelectedArticle(article);
+                        setGeneratedContent('');
+                      }
+                    }}
+                  >
+                    <img
+                      src={article.image || PLACEHOLDER_ARTICLE_IMAGE}
+                      alt={article.title}
+                      className="w-10 h-10 object-cover rounded-md mr-3 flex-shrink-0"
+                      loading="lazy"
+                      onError={(e) => {
+                        e.target.onerror = null;
+                        e.target.src = PLACEHOLDER_ARTICLE_IMAGE;
+                      }}
+                    />
+                    <div className="flex-1 text-sm font-medium truncate">{article.title}</div>
+                  </div>
+                ))
+              ) : (
+                <p className="text-gray-600">No articles match your search.</p>
+              )}
             </div>
           ) : (
-            <p className="content-generator__no-selection">No articles available for this feed.</p>
+            <p className="text-gray-600">No articles available for this feed.</p>
           )}
         </div>
 
-        {/* Article Preview */}
-        {selectedArticle && (
-          <div className="content-generator__section">
-            <h3>Article Preview</h3>
-            <div className="content-generator__preview">
-              <h4>{selectedArticle.title}</h4>
-              <p>{selectedArticle.description || 'No description available.'}</p>
-              <a href={selectedArticle.link} target="_blank" rel="noopener noreferrer">
-                Read more
-              </a>
+        {/* Column 3: Generated Content */}
+        <div className="flex-1 min-w-[280px]">
+          <h3 className="text-xl font-semibold text-blue-600 mb-4">Generated Post</h3>
+          {isLoading && selectedArticle ? (
+            <div className="flex justify-center items-center h-40">
+              <FaSpinner className="animate-spin text-blue-600 text-4xl" />
             </div>
-          </div>
-        )}
-
-        {/* Generated Post */}
-        <div className="content-generator__section content-generator__post-section">
-          <h3>Generated Post</h3>
-          {generatedContent ? (
-            <div className="content-generator__generated-post">
-              <div className="content-generator__content">{generatedContent}</div>
-              <div className="content-generator__actions">
+          ) : generatedContent ? (
+            <div className="p-4 border border-green-300 rounded-md bg-green-50">
+              <p className="text-gray-800 mb-4 whitespace-pre-wrap">{generatedContent}</p>
+              <div className="flex space-x-3">
                 <button
                   onClick={() => copyToClipboard(generatedContent)}
-                  className="content-generator__button content-generator__button--secondary"
+                  className="flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition duration-200"
                 >
-                  <FaCopy /> Copy to Clipboard
+                  <FaCopy className="mr-2" /> Copy to Clipboard
                 </button>
                 <button
                   onClick={openLinkedIn}
-                  className="content-generator__button content-generator__button--primary"
+                  className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition duration-200"
                 >
-                  <FaLinkedin /> Open LinkedIn
+                  <FaLinkedin className="mr-2" /> Open LinkedIn
                 </button>
               </div>
             </div>
           ) : (
-            <div>
+            <div className="flex flex-col items-start">
               {selectedArticle ? (
                 <button
                   onClick={generatePost}
-                  className="content-generator__button content-generator__button--primary content-generator__generate-button"
+                  className="w-full flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md shadow-md transition duration-200"
                 >
                   Generate Post
                 </button>
               ) : (
-                <p className="content-generator__no-selection">
-                  Please select an article to generate a post.
-                </p>
+                <p className="text-gray-600">Please select an article to generate a post.</p>
               )}
             </div>
           )}
         </div>
       </div>
 
-      {/* Hidden Fetcher Iframe */}
-      <iframe
-        ref={iframeRef}
-        src={chrome.runtime.getURL('components/RSSfeed/fetcher.html')}
-        style={{ display: 'none' }}
-        title="RSS Fetcher"
-      ></iframe>
+      {/* Article Preview */}
+      {selectedArticle && (
+        <div className="mt-8 p-6 bg-white rounded-md shadow-md">
+          <h3 className="text-xl font-semibold text-blue-600 mb-4">Article Preview</h3>
+          <div className="p-4 border border-gray-300 rounded-md bg-gray-50">
+            <h4 className="text-lg font-bold mb-2">{selectedArticle.title}</h4>
+            <p className="text-gray-700 mb-4">{selectedArticle.description || 'No description available.'}</p>
+            <a
+              href={selectedArticle.link}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-500 hover:underline font-medium"
+            >
+              Read more
+            </a>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
