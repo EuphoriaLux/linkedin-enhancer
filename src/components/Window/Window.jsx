@@ -3,7 +3,8 @@
 import React, { useState } from 'react';
 import ReactDOM from 'react-dom';
 import { FaCopy, FaCheckCircle } from 'react-icons/fa'; // Import icons
-import './Window.css';
+import Menu from '../Menu/Menu'; // Import the Menu component
+import 'Assets/styles/tailwind.css'; // Ensure Tailwind CSS is imported
 
 const WindowComponent = () => {
   const params = new URLSearchParams(window.location.search);
@@ -42,32 +43,48 @@ const WindowComponent = () => {
   const isPost = post !== '';
 
   return (
-    <div className="window-container">
-      <h2>{isComment ? 'Generated Comment' : isPost ? 'Generated Post' : 'Content'}</h2>
+
+
+    <div className="p-6 bg-white rounded-lg shadow-md max-w-md mx-auto mt-10">
+            {/* Navigation Menu */}
+            <Menu /> {/* Include the Menu component */}
+      <h2 className="text-xl font-semibold mb-4">
+        {isComment ? 'Generated Comment' : isPost ? 'Generated Post' : 'Content'}
+      </h2>
       
-      <div className="content-container">
-        {isComment && <div className="content">{comment}</div>}
-        {isPost && <div className="content">{post}</div>}
+      <div className="mb-6">
+        {isComment && <div className="p-4 bg-gray-100 rounded">{comment}</div>}
+        {isPost && <div className="p-4 bg-gray-100 rounded">{post}</div>}
       </div>
 
-      <div className="button-group">
-        <button onClick={handleCopy} className="button button-primary copy-button">
+      <div className="flex space-x-4">
+        <button
+          onClick={handleCopy}
+          className={`flex items-center px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 focus:outline-none transition ${
+            copySuccess ? 'bg-green-500 hover:bg-green-600' : ''
+          }`}
+        >
           {copySuccess ? (
             <>
-              <FaCheckCircle className="icon success-icon" /> Copied!
+              <FaCheckCircle className="mr-2" /> Copied!
             </>
           ) : (
             <>
-              <FaCopy className="icon" /> Copy to Clipboard
+              <FaCopy className="mr-2" /> Copy to Clipboard
             </>
           )}
         </button>
-        <button onClick={handleClose} className="button button-secondary">
+        <button
+          onClick={handleClose}
+          className="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600 focus:outline-none transition"
+        >
           Close
         </button>
       </div>
       
-      {copySuccess && <span className="copy-feedback">Copied!</span>}
+      {copySuccess && (
+        <span className="mt-4 inline-block text-green-500">Copied!</span>
+      )}
     </div>
   );
 };

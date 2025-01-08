@@ -2,11 +2,40 @@
 
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { FaSave, FaExclamationCircle, FaCheckCircle } from 'react-icons/fa';
+import { FaSave, FaExclamationCircle, FaCheckCircle, FaSpinner, FaUndo } from 'react-icons/fa';
+import Menu from '../Menu/Menu'; // Import the Menu component
 import classNames from 'classnames'; // Ensure classnames is installed
-import '../../assets/styles/styles.css'; // Corrected relative path
+import 'Assets/styles/tailwind.css'; // Ensure Tailwind CSS is imported
 
 
+const StatusMessage = ({ message, type }) => {
+  if (!message) return null;
+
+  const icon = {
+    success: <FaCheckCircle className="mr-2 text-green-500" />,
+    error: <FaExclamationCircle className="mr-2 text-red-500" />,
+    info: <FaExclamationCircle className="mr-2 text-blue-500" />,
+    warning: <FaExclamationCircle className="mr-2 text-yellow-500" />,
+  };
+
+  return (
+    <div
+      className={classNames(
+        'mb-6 p-4 rounded flex items-center',
+        {
+          'bg-green-100 text-green-800': type === 'success',
+          'bg-red-100 text-red-800': type === 'error',
+          'bg-blue-100 text-blue-800': type === 'info',
+          'bg-yellow-100 text-yellow-800': type === 'warning',
+        }
+      )}
+      aria-live="polite"
+    >
+      {icon[type]}
+      <span>{message}</span>
+    </div>
+  );
+};
 
 const ApiRequestConfig = ({
   title,
@@ -18,6 +47,8 @@ const ApiRequestConfig = ({
   setTemperature,
   maxTokens,
   setMaxTokens,
+  errors,
+  availablePlaceholders, // New prop
 }) => {
   return (
     <div className="bg-white shadow-md rounded-lg p-6 mb-6">
@@ -25,25 +56,44 @@ const ApiRequestConfig = ({
       
       {/* Prompt Section */}
       <div className="mb-4">
-        <label className="block text-gray-700 font-medium mb-2">Prompt:</label>
+        <label htmlFor={`${title}-prompt`} className="block text-gray-700 font-medium mb-2">
+          Prompt:
+        </label>
         <textarea
+          id={`${title}-prompt`}
           value={prompt}
           onChange={(e) => setPrompt(e.target.value)}
           placeholder={`Enter your default prompt for ${title.toLowerCase()}...`}
           rows="4"
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+          className={classNames(
+            "w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent",
+            { 'border-red-500': errors.prompt }
+          )}
+          aria-describedby={`${title}-prompt-error`}
         ></textarea>
+        {errors.prompt && (
+          <small id={`${title}-prompt-error`} className="text-red-500 mt-1 block">
+            {errors.prompt}
+          </small>
+        )}
         <small className="text-gray-500 mt-1 block">
           Customize the default prompt used for generating {title.toLowerCase()}. Use placeholders like{' '}
-          <code className="bg-gray-200 px-1 rounded">{'{content}'}</code> and{' '}
-          <code className="bg-gray-200 px-1 rounded">{'{name}'}</code> as needed.
+          {availablePlaceholders.map((ph, index) => (
+            <span key={index}>
+              <code className="bg-gray-200 px-1 rounded">{`{${ph}}`}</code>
+              {index < availablePlaceholders.length - 1 ? ', ' : '.'}
+            </span>
+          ))}
         </small>
       </div>
       
       {/* AI Model Selection */}
       <div className="mb-4">
-        <label className="block text-gray-700 font-medium mb-2">AI Model:</label>
+        <label htmlFor={`${title}-ai-model`} className="block text-gray-700 font-medium mb-2">
+          AI Model:
+        </label>
         <select
+          id={`${title}-ai-model`}
           value={aiModel}
           onChange={(e) => setAiModel(e.target.value)}
           className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
@@ -55,29 +105,53 @@ const ApiRequestConfig = ({
       
       {/* Temperature Input */}
       <div className="mb-4">
-        <label className="block text-gray-700 font-medium mb-2">Temperature:</label>
+        <label htmlFor={`${title}-temperature`} className="block text-gray-700 font-medium mb-2">
+          Temperature:
+        </label>
         <input
+          id={`${title}-temperature`}
           type="number"
           value={temperature}
           onChange={(e) => setTemperature(e.target.value)}
           step="0.1"
           min="0"
           max="1"
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+          className={classNames(
+            "w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent",
+            { 'border-red-500': errors.temperature }
+          )}
+          aria-describedby={`${title}-temperature-error`}
         />
+        {errors.temperature && (
+          <small id={`${title}-temperature-error`} className="text-red-500 mt-1 block">
+            {errors.temperature}
+          </small>
+        )}
       </div>
       
       {/* Max Tokens Input */}
       <div>
-        <label className="block text-gray-700 font-medium mb-2">Max Tokens:</label>
+        <label htmlFor={`${title}-max-tokens`} className="block text-gray-700 font-medium mb-2">
+          Max Tokens:
+        </label>
         <input
+          id={`${title}-max-tokens`}
           type="number"
           value={maxTokens}
           onChange={(e) => setMaxTokens(e.target.value)}
           min="50"
           max="1000"
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+          className={classNames(
+            "w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent",
+            { 'border-red-500': errors.maxTokens }
+          )}
+          aria-describedby={`${title}-max-tokens-error`}
         />
+        {errors.maxTokens && (
+          <small id={`${title}-max-tokens-error`} className="text-red-500 mt-1 block">
+            {errors.maxTokens}
+          </small>
+        )}
       </div>
     </div>
   );
@@ -95,6 +169,18 @@ const Options = () => {
   const [postMaxTokens, setPostMaxTokens] = useState(150);
   const [blacklist, setBlacklist] = useState('');
   const [status, setStatus] = useState({ message: '', type: '' });
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Form validation errors
+  const [errors, setErrors] = useState({
+    apiKey: '',
+    defaultCommentPrompt: '',
+    defaultPostPrompt: '',
+    commentTemperature: '',
+    commentMaxTokens: '',
+    postTemperature: '',
+    postMaxTokens: '',
+  });
 
   // Load settings from chrome.storage.sync on component mount
   useEffect(() => {
@@ -116,21 +202,60 @@ const Options = () => {
         setDefaultCommentPrompt(result.defaultCommentPrompt || '');
         setDefaultPostPrompt(result.defaultPostPrompt || '');
         setCommentAiModel(result.commentAiModel || 'gemini-pro');
-        setCommentTemperature(result.commentTemperature || 0.7);
-        setCommentMaxTokens(result.commentMaxTokens || 150);
+        setCommentTemperature(result.commentTemperature !== undefined ? result.commentTemperature : 0.7);
+        setCommentMaxTokens(result.commentMaxTokens !== undefined ? result.commentMaxTokens : 150);
         setPostAiModel(result.postAiModel || 'gemini-pro');
-        setPostTemperature(result.postTemperature || 0.7);
-        setPostMaxTokens(result.postMaxTokens || 150);
+        setPostTemperature(result.postTemperature !== undefined ? result.postTemperature : 0.7);
+        setPostMaxTokens(result.postMaxTokens !== undefined ? result.postMaxTokens : 150);
         setBlacklist(result.blacklist || '');
       }
     );
   }, []);
 
-  const saveSettings = () => {
+  const validateForm = () => {
+    const newErrors = {};
+
     if (!apiKey.trim()) {
-      setStatus({ message: 'API key cannot be empty.', type: 'error' });
+      newErrors.apiKey = 'API key cannot be empty.';
+    }
+
+    if (!defaultCommentPrompt.trim()) {
+      newErrors.defaultCommentPrompt = 'Default comment prompt cannot be empty.';
+    }
+
+    if (!defaultPostPrompt.trim()) {
+      newErrors.defaultPostPrompt = 'Default post prompt cannot be empty.';
+    }
+
+    if (commentTemperature < 0 || commentTemperature > 1) {
+      newErrors.commentTemperature = 'Temperature must be between 0 and 1.';
+    }
+
+    if (postTemperature < 0 || postTemperature > 1) {
+      newErrors.postTemperature = 'Temperature must be between 0 and 1.';
+    }
+
+    if (commentMaxTokens < 50 || commentMaxTokens > 1000) {
+      newErrors.commentMaxTokens = 'Max Tokens must be between 50 and 1000.';
+    }
+
+    if (postMaxTokens < 50 || postMaxTokens > 1000) {
+      newErrors.postMaxTokens = 'Max Tokens must be between 50 and 1000.';
+    }
+
+    setErrors(newErrors);
+
+    return Object.keys(newErrors).length === 0;
+  };
+
+  const saveSettings = () => {
+    if (!validateForm()) {
+      setStatus({ message: 'Please fix the errors in the form.', type: 'error' });
       return;
     }
+
+    setIsSaving(true);
+    setStatus({ message: '', type: '' });
 
     chrome.storage.sync.set(
       {
@@ -146,6 +271,7 @@ const Options = () => {
         blacklist: blacklist.trim(),
       },
       () => {
+        setIsSaving(false);
         if (chrome.runtime.lastError) {
           setStatus({ message: `Error saving settings: ${chrome.runtime.lastError.message}`, type: 'error' });
         } else {
@@ -155,21 +281,68 @@ const Options = () => {
     );
   };
 
+  const resetToDefaults = () => {
+    const defaultSettings = {
+      apiKey: '',
+      defaultCommentPrompt: '',
+      defaultPostPrompt: '',
+      commentAiModel: 'gemini-pro',
+      commentTemperature: 0.7,
+      commentMaxTokens: 150,
+      postAiModel: 'gemini-pro',
+      postTemperature: 0.7,
+      postMaxTokens: 150,
+      blacklist: '',
+    };
+
+    setApiKey(defaultSettings.apiKey);
+    setDefaultCommentPrompt(defaultSettings.defaultCommentPrompt);
+    setDefaultPostPrompt(defaultSettings.defaultPostPrompt);
+    setCommentAiModel(defaultSettings.commentAiModel);
+    setCommentTemperature(defaultSettings.commentTemperature);
+    setCommentMaxTokens(defaultSettings.commentMaxTokens);
+    setPostAiModel(defaultSettings.postAiModel);
+    setPostTemperature(defaultSettings.postTemperature);
+    setPostMaxTokens(defaultSettings.postMaxTokens);
+    setBlacklist(defaultSettings.blacklist);
+    setErrors({});
+    setStatus({ message: 'Settings reset to default values.', type: 'info' });
+  };
+
   return (
     <div className="max-w-4xl mx-auto p-6 bg-gray-100 min-h-screen">
+
+      {/* Navigation Menu */}
+      <Menu /> {/* Include the Menu component */}
+
       {/* Header */}
       <h1 className="text-3xl font-bold text-gray-800 mb-6">Extension Options</h1>
 
+      {/* Status Message */}
+      <StatusMessage message={status.message} type={status.type} />
+
       {/* API Key Section */}
       <div className="bg-white shadow-md rounded-lg p-6 mb-6">
-        <label className="block text-gray-700 font-medium mb-2">Google AI API Key:</label>
+        <label htmlFor="apiKey" className="block text-gray-700 font-medium mb-2">
+          Google AI API Key:
+        </label>
         <input
+          id="apiKey"
           type="text"
           value={apiKey}
           onChange={(e) => setApiKey(e.target.value)}
           placeholder="Enter your API key..."
-          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+          className={classNames(
+            "w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent",
+            { 'border-red-500': errors.apiKey }
+          )}
+          aria-describedby="apiKey-error"
         />
+        {errors.apiKey && (
+          <small id="apiKey-error" className="text-red-500 mt-1 block">
+            {errors.apiKey}
+          </small>
+        )}
       </div>
 
       {/* Comment Configuration */}
@@ -183,6 +356,12 @@ const Options = () => {
         setTemperature={setCommentTemperature}
         maxTokens={commentMaxTokens}
         setMaxTokens={setCommentMaxTokens}
+        errors={{
+          prompt: errors.defaultCommentPrompt,
+          temperature: errors.commentTemperature,
+          maxTokens: errors.commentMaxTokens,
+        }}
+        availablePlaceholders={['postContent', 'name', 'website']} // Updated placeholders
       />
 
       {/* Post Configuration */}
@@ -196,12 +375,21 @@ const Options = () => {
         setTemperature={setPostTemperature}
         maxTokens={postMaxTokens}
         setMaxTokens={setPostMaxTokens}
+        errors={{
+          prompt: errors.defaultPostPrompt,
+          temperature: errors.postTemperature,
+          maxTokens: errors.postMaxTokens,
+        }}
+        availablePlaceholders={['content', 'feedName', 'website']} // Updated placeholders
       />
 
       {/* Blacklist Section */}
       <div className="bg-white shadow-md rounded-lg p-6 mb-6">
-        <label className="block text-gray-700 font-medium mb-2">Blacklist:</label>
+        <label htmlFor="blacklist" className="block text-gray-700 font-medium mb-2">
+          Blacklist:
+        </label>
         <textarea
+          id="blacklist"
           value={blacklist}
           onChange={(e) => setBlacklist(e.target.value)}
           placeholder="Enter words to blacklist, separated by commas..."
@@ -213,32 +401,33 @@ const Options = () => {
         </small>
       </div>
 
-      {/* Save Button */}
-      <div className="flex items-center">
+      {/* Save and Reset Buttons */}
+      <div className="flex items-center space-x-4">
         <button
           onClick={saveSettings}
-          className="flex items-center px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-hover transition duration-200"
+          className={classNames(
+            "flex items-center px-4 py-2 bg-primary text-white rounded-md hover:bg-primary-hover transition duration-200",
+            { 'opacity-50 cursor-not-allowed': isSaving }
+          )}
+          disabled={isSaving}
         >
-          <FaSave className="mr-2" /> Save Settings
+          {isSaving ? (
+            <>
+              <FaSpinner className="mr-2 animate-spin" /> Saving...
+            </>
+          ) : (
+            <>
+              <FaSave className="mr-2" /> Save Settings
+            </>
+          )}
         </button>
-        {status.message && (
-          <div
-            className={classNames(
-              'flex items-center ml-4 px-4 py-2 rounded-md',
-              {
-                'bg-green-100 text-green-800': status.type === 'success',
-                'bg-red-100 text-red-800': status.type === 'error',
-              }
-            )}
-          >
-            {status.type === 'success' ? (
-              <FaCheckCircle className="mr-2" />
-            ) : (
-              <FaExclamationCircle className="mr-2" />
-            )}
-            {status.message}
-          </div>
-        )}
+        <button
+          onClick={resetToDefaults}
+          className="flex items-center px-4 py-2 bg-gray-300 text-gray-800 rounded-md hover:bg-gray-400 transition duration-200"
+          aria-label="Reset settings to default values"
+        >
+          <FaUndo className="mr-2" /> Reset to Defaults
+        </button>
       </div>
     </div>
   );

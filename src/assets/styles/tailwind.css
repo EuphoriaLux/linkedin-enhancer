@@ -1,0 +1,24 @@
+/* src/assets/styles/styles.css */
+
+:root {
+    --primary-color: #1DA1F2; /* LinkedIn Blue or your desired primary color */
+    --primary-hover: #0d8ddb; /* Darker shade for hover */
+    --secondary-color: #17bf63; /* Secondary color */
+    --secondary-hover: #138b50; /* Darker shade for hover */
+    --success-color: #28a745;
+    --error-color: #dc3545;
+    --warning-color: #ffc107;
+    --info-color: #17a2b8;
+    --background-color: #f3f4f6;
+    --text-color: #1f2937;
+    --border-color: #d1d5db;
+    --box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    --font-family: 'Inter', sans-serif; /* Example Font */
+    --transition-speed: 0.3s;
+  }
+  
+  /* Import Tailwind base styles */
+  @tailwind base;
+  @tailwind components;
+  @tailwind utilities;
+  

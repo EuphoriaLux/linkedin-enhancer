@@ -7,6 +7,8 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 const webpack = require('webpack');
 const NodePolyfillPlugin = require('node-polyfill-webpack-plugin'); // Import the plugin
+const { BundleAnalyzerPlugin } = require('webpack-bundle-analyzer');
+
 
 module.exports = {
   entry: {
@@ -107,6 +109,11 @@ module.exports = {
       Buffer: ['buffer', 'Buffer'],
     }),
     new NodePolyfillPlugin(), // Adds polyfills for Node.js core modules
+    new BundleAnalyzerPlugin({
+      analyzerMode: 'static',
+      openAnalyzer: false,
+      reportFilename: 'bundle-report.html',
+    }),
   ],
   target: ['web', 'es5'], // Ensures compatibility with older browsers if needed
   node: {
@@ -115,5 +122,10 @@ module.exports = {
     __filename: false,
   },
   mode: 'production', // Sets Webpack to production mode for optimizations
+  optimization: {
+    usedExports: true,
+  },
   devtool: 'source-map', // Generates source maps for debugging
 };
+
+

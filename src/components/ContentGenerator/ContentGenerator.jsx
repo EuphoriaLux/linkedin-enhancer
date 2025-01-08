@@ -2,11 +2,11 @@
 
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
-import { FaCopy, FaLinkedin, FaSpinner, FaSearch } from 'react-icons/fa';
+import { FaCopy, FaLinkedin, FaSpinner, FaSearch, FaCheckCircle, FaExclamationCircle, FaComments } from 'react-icons/fa';
 import classNames from 'classnames'; // Ensure classnames is installed
+import Menu from '../Menu/Menu'; // Import the Menu component
 import { extractArticleContent } from '../../Utils/contentExtractor.js';
-import 'Assets/styles/styles.css'; // Using Webpack alias
-
+import 'Assets/styles/tailwind.css'; // Ensure Tailwind CSS is imported
 
 const PLACEHOLDER_FEED_IMAGE = 'https://via.placeholder.com/150?text=No+Image';
 const PLACEHOLDER_ARTICLE_IMAGE = 'https://via.placeholder.com/150?text=No+Image';
@@ -105,7 +105,7 @@ const ContentGenerator = () => {
       return;
     }
 
-    const posterName = 'LinkedInUser';
+    const feedName = selectedFeed.title; // Use the RSS feed's name
     const articleContent = selectedArticle.description || selectedArticle.title || '';
 
     setStatus({ message: 'Generating post...', type: 'info' });
@@ -116,7 +116,7 @@ const ContentGenerator = () => {
     chrome.runtime.sendMessage(
       {
         action: 'generatePost',
-        posterName,
+        feedName, // Pass feedName instead of posterName
         articleContent,
         websiteContent: extractedWebsiteContent,
         websiteURL: selectedArticle.link,
@@ -172,9 +172,14 @@ const ContentGenerator = () => {
 
   return (
     <div className="p-6 font-sans bg-gray-100 min-h-screen rounded-lg shadow-lg">
+      {/* Navigation Menu */}
+      <Menu /> {/* Include the Menu component */}
+
       {/* Header */}
       <div className="text-center mb-8">
-        <h1 className="text-3xl font-bold text-blue-600">Content Generator</h1>
+        <h1 className="text-3xl font-bold text-blue-600 flex items-center justify-center">
+          <FaLinkedin className="mr-2" /> Content Generator
+        </h1>
         <p className="text-gray-600 mt-2">Generate engaging LinkedIn posts effortlessly</p>
       </div>
 
@@ -193,10 +198,10 @@ const ContentGenerator = () => {
           aria-live="polite"
         >
           {/* Dynamic Icon Based on Status Type */}
-          {status.type === 'success' && <FaCopy className="mr-2 text-green-500" />}
-          {status.type === 'error' && <FaCopy className="mr-2 text-red-500" />}
-          {status.type === 'warning' && <FaCopy className="mr-2 text-yellow-500" />}
-          {status.type === 'info' && <FaCopy className="mr-2 text-blue-500" />}
+          {status.type === 'success' && <FaCheckCircle className="mr-2 text-green-500" />}
+          {status.type === 'error' && <FaExclamationCircle className="mr-2 text-red-500" />}
+          {status.type === 'warning' && <FaExclamationCircle className="mr-2 text-yellow-500" />}
+          {status.type === 'info' && <FaSpinner className="mr-2 animate-spin text-blue-500" />}
           <span>{status.message}</span>
         </div>
       )}
@@ -344,13 +349,15 @@ const ContentGenerator = () => {
               <div className="flex space-x-3">
                 <button
                   onClick={() => copyToClipboard(generatedContent)}
-                  className="flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition duration-200"
+                  className="flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-md transition duration-200 focus:outline-none focus:ring-2 focus:ring-green-500"
+                  aria-label="Copy to Clipboard"
                 >
                   <FaCopy className="mr-2" /> Copy to Clipboard
                 </button>
                 <button
                   onClick={openLinkedIn}
-                  className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition duration-200"
+                  className="flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-md transition duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  aria-label="Open LinkedIn"
                 >
                   <FaLinkedin className="mr-2" /> Open LinkedIn
                 </button>
@@ -361,9 +368,24 @@ const ContentGenerator = () => {
               {selectedArticle ? (
                 <button
                   onClick={generatePost}
-                  className="w-full flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md shadow-md transition duration-200"
+                  className={classNames(
+                    'w-full flex items-center justify-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-md shadow-md transition duration-200 focus:outline-none focus:ring-2 focus:ring-blue-500',
+                    {
+                      'opacity-50 cursor-not-allowed': isLoading,
+                    }
+                  )}
+                  aria-label="Generate Post"
+                  disabled={isLoading}
                 >
-                  Generate Post
+                  {isLoading ? (
+                    <>
+                      <FaSpinner className="mr-2 animate-spin" /> Generating...
+                    </>
+                  ) : (
+                    <>
+                      <FaComments className="mr-2" /> Generate Post
+                    </>
+                  )}
                 </button>
               ) : (
                 <p className="text-gray-600">Please select an article to generate a post.</p>

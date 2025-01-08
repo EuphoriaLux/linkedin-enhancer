@@ -149,7 +149,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     }
 
     if (message.action === 'generatePost') {
-        const { posterName, articleContent, websiteURL } = message;
+        const { feedName, articleContent, websiteURL, websiteContent } = message;
 
         if (!isValidUrl(websiteURL)) {
             const errorMsg = 'Invalid website URL provided.';
@@ -158,9 +158,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
             return;
         }
 
-        console.log('🔸 Generating post for:', posterName, 'From Website:', websiteURL);
+        console.log('🔸 Generating post for Feed:', feedName, 'From Website:', websiteURL);
 
-        APIService.generatePost(articleContent, posterName, websiteURL)
+        APIService.generatePost(articleContent, feedName, websiteURL, websiteContent)
             .then(post => {
                 if (!post) {
                     throw new Error('APIService returned an empty post.');
@@ -207,3 +207,6 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     // Handle other actions or ignore
     console.warn('⚠️ Unknown action:', message.action);
 });
+
+// Ensure the script doesn't terminate prematurely
+process.nextTick(() => {});

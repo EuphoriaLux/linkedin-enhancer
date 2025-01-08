@@ -3,7 +3,8 @@
 import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { FaTrash, FaPlus } from 'react-icons/fa';
-import './RSSfeed.css';
+import Menu from '../Menu/Menu'; // Import the Menu component
+import 'Assets/styles/tailwind.css'; // Ensure Tailwind CSS is imported
 
 const PLACEHOLDER_FEED_IMAGE = 'https://via.placeholder.com/50?text=Feed';
 
@@ -103,9 +104,12 @@ const RSSfeed = () => {
   };
 
   return (
-    <div className="rssfeed-container">
-      <h1>RSS Feed Management</h1>
-      <div className="add-feed-section">
+    <div className="p-6 bg-white rounded-lg shadow-md max-w-2xl mx-auto mt-10">
+      {/* Navigation Menu */}
+      <Menu /> {/* Include the Menu component */}
+      <h1 className="text-2xl font-semibold mb-6">RSS Feed Management</h1>
+      
+      <div className="flex items-center mb-4">
         <input
           type="text"
           value={newFeedUrl}
@@ -113,42 +117,53 @@ const RSSfeed = () => {
           placeholder="Enter RSS feed URL..."
           title="RSS Feed URL"
           required
+          className="flex-grow px-4 py-2 border border-gray-300 rounded-l-md focus:outline-none focus:ring-2 focus:ring-blue-500"
         />
         <button
           type="button"
           onClick={addRssFeed}
-          className="button button-secondary"
+          className="flex items-center px-4 py-2 bg-green-500 text-white rounded-r-md hover:bg-green-600 focus:outline-none transition"
           title="Add RSS Feed"
         >
-          <FaPlus /> Add
+          <FaPlus className="mr-2" /> Add
         </button>
       </div>
+
       {rssStatus.message && (
-        <div className={`rss-status ${rssStatus.type}`}>
+        <div
+          className={`mb-4 p-3 rounded ${
+            rssStatus.type === 'error'
+              ? 'bg-red-100 text-red-700'
+              : rssStatus.type === 'success'
+              ? 'bg-green-100 text-green-700'
+              : 'bg-blue-100 text-blue-700'
+          }`}
+        >
           {rssStatus.message}
         </div>
       )}
+
       {rssFeeds.length > 0 && (
-        <ul className="rss-feed-list">
+        <ul className="space-y-4">
           {rssFeeds.map((feed, index) => (
-            <li key={index}>
-              <div className="feed-info">
+            <li key={index} className="flex items-center justify-between p-4 border border-gray-200 rounded-md">
+              <div className="flex items-center">
                 <img
                   src={feed.image}
                   alt={`${feed.title} logo`}
-                  className="feed-image"
+                  className="w-12 h-12 mr-4 rounded"
                   onError={(e) => {
                     e.target.onerror = null;
                     e.target.src = PLACEHOLDER_FEED_IMAGE;
                   }}
                 />
-                <span className="feed-title">{feed.title}</span>
+                <span className="text-lg">{feed.title}</span>
               </div>
               <button
                 type="button"
                 onClick={() => removeRssFeed(feed.url)}
                 title="Remove RSS Feed"
-                className="remove-button"
+                className="text-red-500 hover:text-red-700 focus:outline-none"
               >
                 <FaTrash />
               </button>
@@ -156,9 +171,15 @@ const RSSfeed = () => {
           ))}
         </ul>
       )}
+
       {/* Navigation Link Back to Options */}
-      <div className="navigation-links">
-        <a href="options.html" target="_blank" rel="noopener noreferrer">
+      <div className="mt-6 text-center">
+        <a
+          href="options.html"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="text-blue-500 hover:underline"
+        >
           Back to General Settings
         </a>
       </div>
