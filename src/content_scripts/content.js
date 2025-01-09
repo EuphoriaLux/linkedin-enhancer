@@ -80,8 +80,8 @@
         const postContentElement = post.querySelector('div.feed-shared-update-v2__description-wrapper, div.ember-view span.break-words');
         const postContent = postContentElement ? postContentElement.innerText.trim() : 'No content available';
 
-        // Extract poster's name
-        const posterNameElement = post.querySelector('span.feed-shared-actor__name, a.feed-shared-actor__name-link, span.actor-name');
+        // Extract the poster's name using a more reliable selector
+        const posterNameElement = post.querySelector('a[href*="/in/"] .update-components-actor__title span[aria-hidden="true"]');
         const posterName = posterNameElement ? posterNameElement.innerText.trim() : 'Unknown User';
 
         debugLog(`Generate Comment clicked for Post ID: ${postId}, Poster: ${posterName}`);

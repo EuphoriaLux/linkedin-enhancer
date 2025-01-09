@@ -179,7 +179,7 @@ export class APIService {
             const prompt = settings.defaultCommentPrompt
                 ? settings.defaultCommentPrompt
                     .replace('{postContent}', postContent)
-                    .replace('{name}', posterName)
+                    .replace('{posterName}', posterName)
                 : `Write a thoughtful and engaging LinkedIn comment for a post by ${posterName}. The post content is: "${postContent}"`;
 
             console.log('🔹 Final Prompt for generateComment:', prompt);

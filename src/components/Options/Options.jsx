@@ -361,7 +361,7 @@ const Options = () => {
           temperature: errors.commentTemperature,
           maxTokens: errors.commentMaxTokens,
         }}
-        availablePlaceholders={['postContent', 'name', 'website']} // Updated placeholders
+        availablePlaceholders={['postContent', 'posterName', 'website']} // Updated placeholders
       />
 
       {/* Post Configuration */}
