@@ -4,9 +4,11 @@ import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import { FaSave, FaExclamationCircle, FaCheckCircle, FaSpinner, FaUndo } from 'react-icons/fa';
 import Menu from '../Menu/Menu'; // Import the Menu component
-import classNames from 'classnames'; // Ensure classnames is installed
+import classNames from 'classnames';
 import 'Assets/styles/tailwind.css'; // Ensure Tailwind CSS is imported
-
+import LoginButton from '../Login/LoginButton'; // Adjust the path if necessary
+import ConnectionsList from '../Login/ConnectionsList'; // Adjust the path if necessary
+import LogoutButton from '../Login/LogoutButton'; // Optional: Implement Logout functionality
 
 const StatusMessage = ({ message, type }) => {
   if (!message) return null;
@@ -48,7 +50,7 @@ const ApiRequestConfig = ({
   maxTokens,
   setMaxTokens,
   errors,
-  availablePlaceholders, // New prop
+  availablePlaceholders,
 }) => {
   return (
     <div className="bg-white shadow-md rounded-lg p-6 mb-6">
@@ -182,7 +184,10 @@ const Options = () => {
     postMaxTokens: '',
   });
 
-  // Load settings from chrome.storage.sync on component mount
+  // LinkedIn authentication state
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  // Load settings and authentication state from chrome.storage.sync on component mount
   useEffect(() => {
     chrome.storage.sync.get(
       [
@@ -210,6 +215,13 @@ const Options = () => {
         setBlacklist(result.blacklist || '');
       }
     );
+
+    // Check LinkedIn authentication state
+    chrome.storage.local.get(['linkedinAccessToken'], (result) => {
+      if (result.linkedinAccessToken) {
+        setIsLoggedIn(true);
+      }
+    });
   }, []);
 
   const validateForm = () => {
@@ -309,6 +321,13 @@ const Options = () => {
     setStatus({ message: 'Settings reset to default values.', type: 'info' });
   };
 
+  const handleLogout = () => {
+    chrome.storage.local.remove(['linkedinAccessToken'], () => {
+      setIsLoggedIn(false);
+      setStatus({ message: 'Logged out from LinkedIn.', type: 'info' });
+    });
+  };
+
   return (
     <div className="max-w-4xl mx-auto p-6 bg-gray-100 min-h-screen">
 
@@ -361,7 +380,7 @@ const Options = () => {
           temperature: errors.commentTemperature,
           maxTokens: errors.commentMaxTokens,
         }}
-        availablePlaceholders={['postContent', 'posterName', 'website']} // Updated placeholders
+        availablePlaceholders={['postContent', 'posterName']}
       />
 
       {/* Post Configuration */}
@@ -380,8 +399,22 @@ const Options = () => {
           temperature: errors.postTemperature,
           maxTokens: errors.postMaxTokens,
         }}
-        availablePlaceholders={['content', 'feedName', 'website']} // Updated placeholders
+        availablePlaceholders={['articleContent', 'feedName', 'websiteURL', 'websiteContent']}
       />
+
+      {/* LinkedIn Integration Section */}
+      <div className="bg-white shadow-md rounded-lg p-6 mb-6">
+        <h2 className="text-2xl font-semibold text-gray-800 mb-4">LinkedIn Integration</h2>
+        {!isLoggedIn ? (
+          <LoginButton onLoginSuccess={() => setIsLoggedIn(true)} />
+        ) : (
+          <div className="mt-4">
+            <p className="text-green-600 mb-2">Connected to LinkedIn successfully!</p>
+            <ConnectionsList />
+            <LogoutButton onLogout={handleLogout} />
+          </div>
+        )}
+      </div>
 
       {/* Blacklist Section */}
       <div className="bg-white shadow-md rounded-lg p-6 mb-6">

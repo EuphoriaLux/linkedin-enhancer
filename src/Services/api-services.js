@@ -2,9 +2,8 @@
 
 /**
  * APIService Class
- * Handles interactions with the AI API for generating LinkedIn posts and comments.
+ * Handles interactions with the AI API for generating content.
  */
-
 export class APIService {
     /**
      * Retrieves settings from chrome.storage.sync
@@ -100,103 +99,16 @@ export class APIService {
     }
 
     /**
-     * Generates a LinkedIn Post with Website Context
-     * @param {string} articleContent - The content of the article.
-     * @param {string} feedName - The name of the RSS feed.
-     * @param {string} websiteURL - The source website URL.
-     * @param {string} websiteContent - Extracted content from the website.
-     * @returns {Promise<string>} The generated LinkedIn post.
+     * Validates the API key format.
+     * @param {string} apiKey - The API key to validate.
      */
-    static async generatePost(articleContent, feedName, websiteURL, websiteContent) {
-        try {
-            const settings = await this.getSettings();
-
-            // Validate API Key
-            if (!settings.apiKey) {
-                throw new Error('API key not configured. Please go to extension options and enter your Google AI API key.');
-            }
-
-            if (!/^[A-Za-z0-9-_]+$/.test(settings.apiKey)) {
-                throw new Error('Invalid API key format. Please check your API key in the extension options.');
-            }
-
-            // Validate Inputs
-            if (!articleContent || !feedName || !websiteURL) {
-                throw new Error('Missing required content for post generation.');
-            }
-
-            // Construct Post Prompt with Website Context
-            const prompt = settings.defaultPostPrompt
-                ? settings.defaultPostPrompt
-                    .replace('{content}', articleContent)
-                    .replace('{feedName}', feedName)
-                    .replace('{website}', websiteURL)
-                : `Create a LinkedIn post based on the article from ${websiteURL} titled "${articleContent}". The RSS feed name is ${feedName}.`;
-
-            console.log('🔹 Final Prompt for generatePost:', prompt);
-
-            // Make API Request
-            const post = await this.makeApiRequest(
-                prompt,
-                settings,
-                settings.postAiModel || 'gemini-pro',
-                settings.postTemperature || 0.7,
-                settings.postMaxTokens || 150
-            );
-
-            return post;
-        } catch (error) {
-            console.error('❌ Error generating post:', error.message || error);
-            throw new Error(`Failed to generate post: ${error.message}`);
+    static validateApiKey(apiKey) {
+        if (!apiKey) {
+            throw new Error('API key not configured. Please go to extension options and enter your Google AI API key.');
         }
-    }
 
-    /**
-     * Generates a LinkedIn Comment based on the post content.
-     * @param {string} postContent - The content of the LinkedIn post.
-     * @param {string} posterName - The name of the post's author.
-     * @returns {Promise<string>} The generated comment.
-     */
-    static async generateComment(postContent, posterName) {
-        try {
-            const settings = await this.getSettings();
-
-            // Validate API Key
-            if (!settings.apiKey) {
-                throw new Error('API key not configured. Please go to extension options and enter your Google AI API key.');
-            }
-
-            if (!/^[A-Za-z0-9-_]+$/.test(settings.apiKey)) {
-                throw new Error('Invalid API key format. Please check your API key in the extension options.');
-            }
-
-            // Validate Inputs
-            if (!postContent || !posterName) {
-                throw new Error('Missing required content for comment generation.');
-            }
-
-            // Construct Comment Prompt
-            const prompt = settings.defaultCommentPrompt
-                ? settings.defaultCommentPrompt
-                    .replace('{postContent}', postContent)
-                    .replace('{posterName}', posterName)
-                : `Write a thoughtful and engaging LinkedIn comment for a post by ${posterName}. The post content is: "${postContent}"`;
-
-            console.log('🔹 Final Prompt for generateComment:', prompt);
-
-            // Make API Request
-            const comment = await this.makeApiRequest(
-                prompt,
-                settings,
-                settings.commentAiModel || 'gemini-pro',
-                settings.commentTemperature || 0.7,
-                settings.commentMaxTokens || 100
-            );
-
-            return comment;
-        } catch (error) {
-            console.error('❌ Error generating comment:', error.message || error);
-            throw new Error(`Failed to generate comment: ${error.message}`);
+        if (!/^[A-Za-z0-9-_]+$/.test(apiKey)) {
+            throw new Error('Invalid API key format. Please check your API key in the extension options.');
         }
     }
 }

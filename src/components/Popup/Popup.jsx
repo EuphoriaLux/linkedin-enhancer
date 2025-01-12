@@ -4,22 +4,41 @@ import React, { useState, useEffect } from 'react';
 import ReactDOM from 'react-dom';
 import 'Assets/styles/tailwind.css'; // Ensure Tailwind CSS is imported
 import { FaLinkedin, FaComments, FaCog, FaRss, FaClipboard } from 'react-icons/fa'; // Import additional icons as needed
+import LoginButton from '../Login/LoginButton'; // Adjust path as needed
+import ConnectionsList from '../Login/ConnectionsList'; // Adjust path as needed
+import LogoutButton from '../Login/LogoutButton'; // Optional: Implement Logout functionality
 
 const Popup = () => {
   const [activeFeeds, setActiveFeeds] = useState(0);
   const [recentComments, setRecentComments] = useState([]);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   // Fetch data from chrome.storage or other sources on mount
   useEffect(() => {
     // Example: Fetch RSS feeds and comments from chrome.storage
-    chrome.storage.sync.get(['rssFeeds', 'recentComments'], (result) => {
+    chrome.storage.sync.get(['rssFeeds', 'recentComments', 'linkedinAccessToken'], (result) => {
       setActiveFeeds(result.rssFeeds ? result.rssFeeds.length : 0);
       setRecentComments(result.recentComments || []);
+      if (result.linkedinAccessToken) {
+        setIsLoggedIn(true);
+      }
     });
   }, []);
 
+  const handleLoginSuccess = () => {
+    setIsLoggedIn(true);
+    // Optionally, refresh connections or perform other actions
+  };
+
+  const handleLogout = () => {
+    chrome.storage.local.remove(['linkedinAccessToken'], () => {
+      setIsLoggedIn(false);
+      alert('Logged out from LinkedIn.');
+    });
+  };
+
   return (
-    <div className="flex flex-col bg-white rounded-lg shadow-md w-80 h-auto p-4">
+    <div className="flex flex-col bg-white rounded-lg shadow-md w-80 h-auto p-4 overflow-y-auto">
       {/* Header Section */}
       <header className="flex items-center justify-center mb-4">
         <FaLinkedin className="text-blue-600 mr-2" size={24} />
@@ -55,7 +74,7 @@ const Popup = () => {
         {recentComments.length > 0 && (
           <section className="mb-4">
             <h2 className="text-lg font-semibold text-gray-800 mb-2">Recent Comments</h2>
-            <ul className="space-y-2">
+            <ul className="space-y-2 max-h-40 overflow-y-auto">
               {recentComments.slice(-5).map((comment, index) => (
                 <li key={index} className="p-2 bg-gray-100 rounded">
                   {comment}
@@ -64,6 +83,20 @@ const Popup = () => {
             </ul>
           </section>
         )}
+
+        {/* LinkedIn Authentication Section */}
+        <section className="mb-4">
+          <h2 className="text-lg font-semibold text-gray-800 mb-2">LinkedIn Integration</h2>
+          {!isLoggedIn ? (
+            <LoginButton onLoginSuccess={handleLoginSuccess} />
+          ) : (
+            <div className="mt-4">
+              <p className="text-green-600 mb-2">Connected to LinkedIn!</p>
+              <ConnectionsList />
+              <LogoutButton onLogout={handleLogout} />
+            </div>
+          )}
+        </section>
 
         {/* Quick Actions */}
         <section className="space-y-3">

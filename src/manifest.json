@@ -7,10 +7,12 @@
     "scripting",
     "activeTab",
     "storage",
+    "identity",
     "tabs"
   ],
   "host_permissions": [
     "https://www.linkedin.com/*",
+    "https://api.linkedin.com/*",
     "https://www.wort.lu/*",
     "https://www.rtl.lu/*",
     "https://partner-feeds.lessentiel.lu/rss/*",
@@ -19,6 +21,14 @@
   "background": {
     "service_worker": "background.bundle.js",
     "type": "module"
+  },
+  "oauth2": {
+    "client_id": "78az37axd2up1i",
+    "scopes": [
+      "r_liteprofile",
+      "r_emailaddress",
+      "w_member_social"
+    ]
   },
   "action": {
     "default_title": "LinkedIn Comment Generator",

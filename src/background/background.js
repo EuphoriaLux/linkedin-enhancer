@@ -1,15 +1,21 @@
 // src/background/background.js
 
-import { APIService } from '../Services/api-services.js';
+import { PostService } from '../Services/postService.js';
+import { CommentService } from '../Services/commentService.js';
 import RSSParser from 'rss-parser';
 import { extractArticleContent } from '../Utils/contentExtractor.js';
 import { Buffer } from 'buffer';
-import process from 'process/browser';
+import process from 'process/browser'; // Remove if not used
 
 const parser = new RSSParser();
 
 const CACHE_DURATION = 60 * 60 * 1000; // 1 hour in milliseconds
 
+/**
+ * Validates if a string is a valid URL.
+ * @param {string} urlString
+ * @returns {boolean}
+ */
 function isValidUrl(urlString) {
     try {
         new URL(urlString);
@@ -19,6 +25,11 @@ function isValidUrl(urlString) {
     }
 }
 
+/**
+ * Fetches RSS feed either from cache or network.
+ * @param {string} feedUrl
+ * @returns {Promise<Object>}
+ */
 const fetchRSSFeed = async (feedUrl) => {
     const cachedFeed = await getCachedFeed(feedUrl);
     if (cachedFeed) {
@@ -53,6 +64,11 @@ const fetchRSSFeed = async (feedUrl) => {
     return feed;
 };
 
+/**
+ * Extracts image URL from an RSS feed item.
+ * @param {Object} item
+ * @returns {string|null}
+ */
 const extractImageFromItem = (item) => {
     if (item.enclosure && item.enclosure.url && item.enclosure.type.startsWith('image/')) {
         return item.enclosure.url;
@@ -70,6 +86,13 @@ const extractImageFromItem = (item) => {
     return null;
 };
 
+/**
+ * Fetches a URL with a timeout.
+ * @param {string} url
+ * @param {Object} options
+ * @param {number} timeout
+ * @returns {Promise<Response>}
+ */
 const fetchWithTimeout = (url, options = {}, timeout = 10000) => {
     return new Promise((resolve, reject) => {
         const controller = new AbortController();
@@ -93,6 +116,11 @@ const fetchWithTimeout = (url, options = {}, timeout = 10000) => {
     });
 };
 
+/**
+ * Retrieves cached feed from chrome.storage.local.
+ * @param {string} feedUrl
+ * @returns {Promise<Object|null>}
+ */
 const getCachedFeed = async (feedUrl) => {
     return new Promise((resolve) => {
         chrome.storage.local.get(['rssFeedCache'], (result) => {
@@ -107,6 +135,12 @@ const getCachedFeed = async (feedUrl) => {
     });
 };
 
+/**
+ * Caches feed data into chrome.storage.local.
+ * @param {string} feedUrl
+ * @param {Object} feed
+ * @returns {Promise<void>}
+ */
 const cacheFeed = async (feedUrl, feed) => {
     return new Promise((resolve) => {
         chrome.storage.local.get(['rssFeedCache'], (result) => {
@@ -122,6 +156,9 @@ const cacheFeed = async (feedUrl, feed) => {
     });
 };
 
+/**
+ * Listener for runtime messages.
+ */
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     console.log('🔹 Background received message:', message);
 
@@ -160,10 +197,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         console.log('🔸 Generating post for Feed:', feedName, 'From Website:', websiteURL);
 
-        APIService.generatePost(articleContent, feedName, websiteURL, websiteContent)
+        // Use PostService instead of APIService
+        PostService.generatePost(articleContent, feedName, websiteURL, websiteContent)
             .then(post => {
                 if (!post) {
-                    throw new Error('APIService returned an empty post.');
+                    throw new Error('PostService returned an empty post.');
                 }
                 console.log('✅ Post generated successfully:', post);
                 sendResponse({ post });
@@ -188,10 +226,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
         console.log(`🔸 Generating comment for Post ID: ${postId}, Poster: ${posterName}`);
 
-        APIService.generateComment(postContent, posterName)
+        // Use CommentService instead of APIService
+        CommentService.generateComment(postContent, posterName)
             .then(comment => {
                 if (!comment) {
-                    throw new Error('APIService returned an empty comment.');
+                    throw new Error('CommentService returned an empty comment.');
                 }
                 console.log('✅ Comment generated successfully:', comment);
                 sendResponse({ comment });
