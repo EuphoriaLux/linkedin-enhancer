@@ -17,7 +17,9 @@ export class APIService {
                     'defaultCommentPrompt',
                     'defaultPostPrompt',
                     'commentAiModel',
+                    'commentCustomModel',  // ← added
                     'postAiModel',
+                    'postCustomModel',     // ← added
                     'commentTemperature',
                     'postTemperature',
                     'commentMaxTokens',
@@ -42,13 +44,22 @@ export class APIService {
      * @param {string} model - The AI model to use.
      * @param {number} temperature - The randomness of the AI's response.
      * @param {number} maxTokens - The maximum number of tokens to generate.
+     * @param {string} [customModel] - The custom model identifier if model is 'custom'.
      * @returns {Promise<string>} The generated text from the AI.
      */
-    static async makeApiRequest(prompt, settings, model, temperature, maxTokens) {
+    static async makeApiRequest(prompt, settings, model, temperature, maxTokens, customModel) {
         const apiBaseUrl = 'https://generativelanguage.googleapis.com/v1beta/models/';
-        const apiUrl = `${apiBaseUrl}${model}:generateContent?key=${settings.apiKey}`;
+        let modelToUse = model;
+        if (model === 'custom') {
+            if (customModel && customModel.trim()) {
+                modelToUse = customModel.trim();
+            } else {
+                throw new Error("Custom model not specified in settings. Please enter a valid model identifier (e.g., 'gemini-2.0-flash') in extension options or select a different model.");
+            }
+        }
+        const apiUrl = `${apiBaseUrl}${modelToUse}:generateContent?key=${settings.apiKey}`;
 
-        console.log('🔹 Sending request to AI API:', { prompt, apiUrl, model, temperature, maxTokens });
+        console.log('🔹 Sending request to AI API:', { prompt, apiUrl, model: modelToUse, temperature, maxTokens });
 
         const response = await fetch(apiUrl, {
             method: 'POST',

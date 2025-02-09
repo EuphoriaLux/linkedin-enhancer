@@ -45,6 +45,8 @@ const ApiRequestConfig = ({
   setPrompt,
   aiModel,
   setAiModel,
+  customAiModel,
+  setCustomAiModel,
   temperature,
   setTemperature,
   maxTokens,
@@ -102,8 +104,31 @@ const ApiRequestConfig = ({
         >
           <option value="gemini-pro">Gemini Pro</option>
           <option value="gemini-basic">Gemini Basic</option>
+          <option value="custom">Custom</option>
         </select>
       </div>
+      
+      {/* Custom Model Input */}
+      {aiModel === 'custom' && (
+        <div className="mb-4">
+          <label htmlFor={`${title}-custom-ai-model`} className="block text-gray-700 font-medium mb-2">
+            Custom Model Identifier:
+          </label>
+          <input
+            id={`${title}-custom-ai-model`}
+            type="text"
+            value={customAiModel}
+            onChange={(e) => setCustomAiModel(e.target.value)}
+            placeholder="Enter custom model identifier"
+            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
+          />
+          {errors.commentCustomModel && (
+            <small id={`${title}-custom-ai-model-error`} className="text-red-500 mt-1 block">
+              {errors.commentCustomModel}
+            </small>
+          )}
+        </div>
+      )}
       
       {/* Temperature Input */}
       <div className="mb-4">
@@ -164,9 +189,11 @@ const Options = () => {
   const [defaultCommentPrompt, setDefaultCommentPrompt] = useState('');
   const [defaultPostPrompt, setDefaultPostPrompt] = useState('');
   const [commentAiModel, setCommentAiModel] = useState('gemini-pro');
+  const [commentCustomModel, setCommentCustomModel] = useState('');
   const [commentTemperature, setCommentTemperature] = useState(0.7);
   const [commentMaxTokens, setCommentMaxTokens] = useState(150);
   const [postAiModel, setPostAiModel] = useState('gemini-pro');
+  const [postCustomModel, setPostCustomModel] = useState('');
   const [postTemperature, setPostTemperature] = useState(0.7);
   const [postMaxTokens, setPostMaxTokens] = useState(150);
   const [blacklist, setBlacklist] = useState('');
@@ -182,6 +209,8 @@ const Options = () => {
     commentMaxTokens: '',
     postTemperature: '',
     postMaxTokens: '',
+    commentCustomModel: '',
+    postCustomModel: '',
   });
 
   // LinkedIn authentication state
@@ -195,21 +224,26 @@ const Options = () => {
         'defaultCommentPrompt',
         'defaultPostPrompt',
         'commentAiModel',
+        'commentCustomModel',
+        'postAiModel',
+        'postCustomModel',
         'commentTemperature',
         'commentMaxTokens',
-        'postAiModel',
         'postTemperature',
         'postMaxTokens',
         'blacklist',
       ],
       (result) => {
         setApiKey(result.apiKey || '');
-        setDefaultCommentPrompt(result.defaultCommentPrompt || '');
-        setDefaultPostPrompt(result.defaultPostPrompt || '');
+        // Prefill with variable-enhanced default prompts if not set
+        setDefaultCommentPrompt(result.defaultCommentPrompt || 'Great insight, {posterName}! I enjoyed reading your thoughts on {postContent}.');
+        setDefaultPostPrompt(result.defaultPostPrompt || 'New update: {articleContent}. Learn more at {websiteURL} and follow {feedName} for updates.');
         setCommentAiModel(result.commentAiModel || 'gemini-pro');
+        setCommentCustomModel(result.commentCustomModel || '');
         setCommentTemperature(result.commentTemperature !== undefined ? result.commentTemperature : 0.7);
         setCommentMaxTokens(result.commentMaxTokens !== undefined ? result.commentMaxTokens : 150);
         setPostAiModel(result.postAiModel || 'gemini-pro');
+        setPostCustomModel(result.postCustomModel || '');
         setPostTemperature(result.postTemperature !== undefined ? result.postTemperature : 0.7);
         setPostMaxTokens(result.postMaxTokens !== undefined ? result.postMaxTokens : 150);
         setBlacklist(result.blacklist || '');
@@ -255,6 +289,14 @@ const Options = () => {
       newErrors.postMaxTokens = 'Max Tokens must be between 50 and 1000.';
     }
 
+    // NEW: Validate custom model fields
+    if (commentAiModel === 'custom' && !commentCustomModel.trim()) {
+      newErrors.commentCustomModel = "Custom model not specified in settings.";
+    }
+    if (postAiModel === 'custom' && !postCustomModel.trim()) {
+      newErrors.postCustomModel = "Custom model not specified in settings.";
+    }
+
     setErrors(newErrors);
 
     return Object.keys(newErrors).length === 0;
@@ -275,9 +317,11 @@ const Options = () => {
         defaultCommentPrompt: defaultCommentPrompt.trim(),
         defaultPostPrompt: defaultPostPrompt.trim(),
         commentAiModel: commentAiModel.trim(),
+        commentCustomModel: commentCustomModel.trim(),
         commentTemperature: parseFloat(commentTemperature),
         commentMaxTokens: parseInt(commentMaxTokens, 10),
         postAiModel: postAiModel.trim(),
+        postCustomModel: postCustomModel.trim(),
         postTemperature: parseFloat(postTemperature),
         postMaxTokens: parseInt(postMaxTokens, 10),
         blacklist: blacklist.trim(),
@@ -296,12 +340,16 @@ const Options = () => {
   const resetToDefaults = () => {
     const defaultSettings = {
       apiKey: '',
-      defaultCommentPrompt: '',
-      defaultPostPrompt: '',
+      // Updated default Comment prompt with variables
+      defaultCommentPrompt: 'Great insight, {posterName}! I enjoyed reading your thoughts on {postContent}.',
+      // Updated default Post prompt with variables
+      defaultPostPrompt: 'New update: {articleContent}. Learn more at {websiteURL} and follow {feedName} for updates.',
       commentAiModel: 'gemini-pro',
+      commentCustomModel: '',
       commentTemperature: 0.7,
       commentMaxTokens: 150,
       postAiModel: 'gemini-pro',
+      postCustomModel: '',
       postTemperature: 0.7,
       postMaxTokens: 150,
       blacklist: '',
@@ -311,9 +359,11 @@ const Options = () => {
     setDefaultCommentPrompt(defaultSettings.defaultCommentPrompt);
     setDefaultPostPrompt(defaultSettings.defaultPostPrompt);
     setCommentAiModel(defaultSettings.commentAiModel);
+    setCommentCustomModel(defaultSettings.commentCustomModel);
     setCommentTemperature(defaultSettings.commentTemperature);
     setCommentMaxTokens(defaultSettings.commentMaxTokens);
     setPostAiModel(defaultSettings.postAiModel);
+    setPostCustomModel(defaultSettings.postCustomModel);
     setPostTemperature(defaultSettings.postTemperature);
     setPostMaxTokens(defaultSettings.postMaxTokens);
     setBlacklist(defaultSettings.blacklist);
@@ -371,6 +421,8 @@ const Options = () => {
         setPrompt={setDefaultCommentPrompt}
         aiModel={commentAiModel}
         setAiModel={setCommentAiModel}
+        customAiModel={commentCustomModel}
+        setCustomAiModel={setCommentCustomModel}
         temperature={commentTemperature}
         setTemperature={setCommentTemperature}
         maxTokens={commentMaxTokens}
@@ -379,6 +431,7 @@ const Options = () => {
           prompt: errors.defaultCommentPrompt,
           temperature: errors.commentTemperature,
           maxTokens: errors.commentMaxTokens,
+          commentCustomModel: errors.commentCustomModel,
         }}
         availablePlaceholders={['postContent', 'posterName']}
       />
@@ -390,6 +443,8 @@ const Options = () => {
         setPrompt={setDefaultPostPrompt}
         aiModel={postAiModel}
         setAiModel={setPostAiModel}
+        customAiModel={postCustomModel}
+        setCustomAiModel={setPostCustomModel}
         temperature={postTemperature}
         setTemperature={setPostTemperature}
         maxTokens={postMaxTokens}
@@ -398,6 +453,7 @@ const Options = () => {
           prompt: errors.defaultPostPrompt,
           temperature: errors.postTemperature,
           maxTokens: errors.postMaxTokens,
+          postCustomModel: errors.postCustomModel,
         }}
         availablePlaceholders={['articleContent', 'feedName', 'websiteURL', 'websiteContent']}
       />

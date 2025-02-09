@@ -50,11 +50,20 @@ export class PostService {
                 throw new Error('Prompt contains unresolved placeholders.');
             }
 
+            // NEW: Determine correct AI Model for post generation
+            let postModel = settings.postAiModel || 'gemini-pro';
+            if (postModel === 'custom') {
+                if (!settings.postCustomModel.trim()) {
+                    throw new Error('Custom model not specified in settings.');
+                }
+                postModel = settings.postCustomModel.trim();
+            }
+
             // Make API Request
             const post = await APIService.makeApiRequest(
                 prompt,
                 settings,
-                settings.postAiModel || 'gemini-pro',
+                postModel,
                 settings.postTemperature || 0.7,
                 settings.postMaxTokens || 150
             );

@@ -34,11 +34,20 @@ export class CommentService {
 
             console.log('🔹 Final Prompt for generateComment:', prompt);
 
+            // NEW: Determine correct AI Model for comment generation
+            let commentModel = settings.commentAiModel || 'gemini-pro';
+            if (commentModel === 'custom') {
+                if (!settings.commentCustomModel.trim()) {
+                    throw new Error("Custom model not specified in settings. Please enter a valid model identifier (e.g., 'gemini-2.0-flash') in extension options or select a different model.");
+                }
+                commentModel = settings.commentCustomModel.trim();
+            }
+
             // Make API Request
             const comment = await APIService.makeApiRequest(
                 prompt,
                 settings,
-                settings.commentAiModel || 'gemini-pro',
+                commentModel,
                 settings.commentTemperature || 0.7,
                 settings.commentMaxTokens || 100
             );
